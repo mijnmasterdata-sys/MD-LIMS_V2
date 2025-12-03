@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import Button from './Button';
 import { CatalogueEntry } from '../types';
 import { DUMMY_CATALOGUE } from '../constants';
@@ -9,6 +9,74 @@ interface CatalogueViewProps {
 }
 
 const CatalogueView: React.FC<CatalogueViewProps> = ({ onEdit, onCreate }) => {
+  const [entries, setEntries] = useState<CatalogueEntry[]>(DUMMY_CATALOGUE);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (!text) return;
+
+      const lines = text.split(/\r?\n/);
+      // Assume first row is header
+      if (lines.length < 2) return;
+
+      const headers = lines[0].split(',').map(h => h.trim());
+      
+      // Helper to safely get value by header name
+      const getValue = (rowColumns: string[], headerName: string): string => {
+        const index = headers.findIndex(h => h.toLowerCase() === headerName.toLowerCase());
+        return index !== -1 && rowColumns[index] ? rowColumns[index].trim() : '';
+      };
+
+      const newEntries: CatalogueEntry[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        // Simple CSV split (note: doesn't handle quoted commas, but sufficient for this req)
+        const columns = line.split(',');
+
+        const testCode = getValue(columns, 'Test Code');
+        if (!testCode) continue; // Skip empty rows
+
+        const newEntry: CatalogueEntry = {
+          id: `imported-${Date.now()}-${i}`,
+          testCode: testCode,
+          analysis: getValue(columns, 'Analysis') || 'Unknown Analysis',
+          component: getValue(columns, 'Component') || 'Unknown Component',
+          category: getValue(columns, 'Category') || 'General',
+          synonyms: getValue(columns, 'Synonyms') || '',
+          priority: (getValue(columns, 'Priority') as 'High' | 'Medium' | 'Low') || 'Medium',
+          
+          // Defaults for fields not in this specific CSV view
+          units: '-',
+          type: 'General',
+          defaultGrade: 'Pharma',
+          tags: ''
+        };
+
+        newEntries.push(newEntry);
+      }
+
+      setEntries(prev => [...prev, ...newEntries]);
+      // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      alert(`Successfully imported ${newEntries.length} entries.`);
+    };
+
+    reader.readAsText(file);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
        <div className="flex justify-between items-center">
@@ -16,7 +84,20 @@ const CatalogueView: React.FC<CatalogueViewProps> = ({ onEdit, onCreate }) => {
           <h2 className="text-2xl font-bold text-white">Master Catalogue</h2>
           <p className="text-gray-400 text-sm">Centralized definitions for analysis and components.</p>
         </div>
-        <Button onClick={onCreate} variant="primary">+ New Entry</Button>
+        <div className="flex gap-3">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            className="hidden" 
+            accept=".csv,.txt" 
+          />
+          <Button onClick={handleImportClick} variant="secondary">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+            Import CSV
+          </Button>
+          <Button onClick={onCreate} variant="primary">+ New Entry</Button>
+        </div>
       </div>
 
       <div className="overflow-hidden border border-gray-700 rounded-lg shadow-lg bg-gray-800">
@@ -33,7 +114,7 @@ const CatalogueView: React.FC<CatalogueViewProps> = ({ onEdit, onCreate }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700 bg-gray-800">
-            {DUMMY_CATALOGUE.map((entry) => (
+            {entries.map((entry) => (
               <tr key={entry.id} className="hover:bg-gray-750 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-blue-300">{entry.testCode}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-200">{entry.analysis}</td>
