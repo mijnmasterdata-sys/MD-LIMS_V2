@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Button from './Button';
-import { CatalogueEntry, ProductSpec } from '../types';
+import { CatalogueEntry, ProductSpec, ParsingTemplate } from '../types';
 import { parseSpecDocument } from '../services/geminiService';
 
 interface ImportDocumentModalProps {
@@ -8,11 +8,13 @@ interface ImportDocumentModalProps {
   onClose: () => void;
   onImport: (spec: ProductSpec) => void;
   catalogue: CatalogueEntry[];
+  templates: ParsingTemplate[];
 }
 
-const ImportDocumentModal: React.FC<ImportDocumentModalProps> = ({ isOpen, onClose, onImport, catalogue }) => {
+const ImportDocumentModal: React.FC<ImportDocumentModalProps> = ({ isOpen, onClose, onImport, catalogue, templates }) => {
   const [file, setFile] = useState<File | null>(null);
   const [text, setText] = useState<string>("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +36,10 @@ const ImportDocumentModal: React.FC<ImportDocumentModalProps> = ({ isOpen, onClo
     setIsParsing(true);
     setError(null);
 
+    // Find selected template instruction
+    const template = templates.find(t => t.id === selectedTemplateId);
+    const customInstruction = template ? template.customInstruction : undefined;
+
     try {
       let result: ProductSpec | null = null;
 
@@ -46,12 +52,12 @@ const ImportDocumentModal: React.FC<ImportDocumentModalProps> = ({ isOpen, onClo
             type: 'file', 
             data: base64String, 
             mimeType: 'application/pdf' 
-          }, catalogue);
+          }, catalogue, customInstruction);
           finalize(result);
         };
         reader.readAsDataURL(file);
       } else {
-        result = await parseSpecDocument({ type: 'text', data: text }, catalogue);
+        result = await parseSpecDocument({ type: 'text', data: text }, catalogue, customInstruction);
         finalize(result);
       }
     } catch (err) {
@@ -69,6 +75,7 @@ const ImportDocumentModal: React.FC<ImportDocumentModalProps> = ({ isOpen, onClo
       // Reset
       setFile(null);
       setText("");
+      setSelectedTemplateId("");
     } else {
       setError("Could not extract specification structure from the input.");
     }
@@ -86,6 +93,25 @@ const ImportDocumentModal: React.FC<ImportDocumentModalProps> = ({ isOpen, onClo
         )}
 
         <div className="space-y-6">
+          
+          {/* Template Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">Parsing Template (Optional)</label>
+            <select 
+              className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none"
+              value={selectedTemplateId}
+              onChange={(e) => setSelectedTemplateId(e.target.value)}
+            >
+              <option value="">-- Auto-Detect (Generic) --</option>
+              {templates.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Select a pre-defined layout to improve extraction accuracy.</p>
+          </div>
+
+          <div className="h-px bg-gray-700 w-full"></div>
+
           {/* File Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">

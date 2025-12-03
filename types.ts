@@ -44,6 +44,13 @@ export interface CatalogueEntry {
   priority: 'High' | 'Medium' | 'Low';
 }
 
+export interface ParsingTemplate {
+  id: string;
+  name: string;
+  description: string;
+  customInstruction: string; // The specific structural prompt for Gemini
+}
+
 export interface AuditLog {
   id: string;
   timestamp: string;
@@ -52,7 +59,7 @@ export interface AuditLog {
   details: string;
 }
 
-export type ViewState = 'PRODUCT_LIST' | 'PRODUCT_FORM' | 'CATALOGUE_LIST' | 'CATALOGUE_FORM';
+export type ViewState = 'PRODUCT_LIST' | 'PRODUCT_FORM' | 'CATALOGUE_LIST' | 'CATALOGUE_FORM' | 'TEMPLATE_LIST' | 'TEMPLATE_FORM';
 
 export interface ModalState {
   importDoc: boolean;

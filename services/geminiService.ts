@@ -14,7 +14,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dis
  */
 export async function parseSpecDocument(
   input: ParseInput,
-  catalogue: CatalogueEntry[]
+  catalogue: CatalogueEntry[],
+  customInstruction?: string
 ): Promise<ProductSpec | null> {
   try {
     let textContent = "";
@@ -41,8 +42,8 @@ export async function parseSpecDocument(
       return null;
     }
 
-    // 2. Call Gemini to Extract Structure using ONLY text
-    const extractedData = await callGeminiExtraction(textContent);
+    // 2. Call Gemini to Extract Structure using ONLY text, optionally with custom template instructions
+    const extractedData = await callGeminiExtraction(textContent, customInstruction);
 
     if (!extractedData) return null;
 
@@ -126,10 +127,10 @@ async function extractTextFromPdf(data: Uint8Array): Promise<string> {
   return fullText;
 }
 
-async function callGeminiExtraction(textData: string): Promise<{ header: any, rows: ParsedLine[] } | null> {
+async function callGeminiExtraction(textData: string, customInstruction?: string): Promise<{ header: any, rows: ParsedLine[] } | null> {
   const model = "gemini-2.5-flash";
   
-  const systemInstruction = `
+  let systemInstruction = `
     You are a specialized LIMS Specification Parser. 
     Your job is to extract structured data from raw product specification text.
     
@@ -147,6 +148,10 @@ async function callGeminiExtraction(textData: string): Promise<{ header: any, ro
     
     Return the result in JSON format.
   `;
+
+  if (customInstruction) {
+    systemInstruction += `\n\nIMPORTANT - CUSTOM PARSING INSTRUCTIONS PROVIDED BY USER:\n${customInstruction}\n\nFollow these custom instructions strictly to locate fields and headers.`;
+  }
 
   try {
     const response = await ai.models.generateContent({

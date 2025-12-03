@@ -3,17 +3,20 @@ import ProductListView from './components/ProductListView';
 import ProductForm from './components/ProductForm';
 import CatalogueView from './components/CatalogueView';
 import CatalogueEntryForm from './components/CatalogueEntryForm';
+import TemplateListView from './components/TemplateListView';
+import TemplateForm from './components/TemplateForm';
 import ImportDocumentModal from './components/ImportDocumentModal';
 import ManualMatchModal from './components/ManualMatchModal';
 import ExportToolModal from './components/ExportToolModal';
 import AuditTrailModal from './components/AuditTrailModal';
-import { ViewState, ModalState, Product, CatalogueEntry, ProductSpec, TestItem } from './types';
-import { DUMMY_CATALOGUE, DUMMY_PRODUCTS } from './constants';
+import { ViewState, ModalState, Product, CatalogueEntry, ProductSpec, TestItem, ParsingTemplate } from './types';
+import { DUMMY_CATALOGUE, DUMMY_PRODUCTS, DUMMY_TEMPLATES } from './constants';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('PRODUCT_LIST');
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
   const [selectedCatalogueEntry, setSelectedCatalogueEntry] = useState<CatalogueEntry | undefined>(undefined);
+  const [selectedTemplate, setSelectedTemplate] = useState<ParsingTemplate | undefined>(undefined);
   
   // Lifted Catalogue State with Persistence
   const [catalogue, setCatalogue] = useState<CatalogueEntry[]>(() => {
@@ -27,6 +30,12 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : DUMMY_PRODUCTS;
   });
 
+  // Lifted Template State with Persistence
+  const [templates, setTemplates] = useState<ParsingTemplate[]>(() => {
+    const saved = localStorage.getItem('LIMS_TEMPLATES');
+    return saved ? JSON.parse(saved) : DUMMY_TEMPLATES;
+  });
+
   // Persist catalogue changes
   useEffect(() => {
     localStorage.setItem('LIMS_CATALOGUE', JSON.stringify(catalogue));
@@ -36,6 +45,11 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('LIMS_PRODUCTS', JSON.stringify(products));
   }, [products]);
+
+  // Persist template changes
+  useEffect(() => {
+    localStorage.setItem('LIMS_TEMPLATES', JSON.stringify(templates));
+  }, [templates]);
   
   // State to hold imported spec data temporarily
   const [importedSpec, setImportedSpec] = useState<ProductSpec | undefined>(undefined);
@@ -60,24 +74,21 @@ const App: React.FC = () => {
   const goCatalogueCreate = () => { setSelectedCatalogueEntry(undefined); setView('CATALOGUE_FORM'); };
   const goCatalogueEdit = (c: CatalogueEntry) => { setSelectedCatalogueEntry(c); setView('CATALOGUE_FORM'); };
 
+  const goTemplateList = () => { setSelectedTemplate(undefined); setView('TEMPLATE_LIST'); };
+  const goTemplateCreate = () => { setSelectedTemplate(undefined); setView('TEMPLATE_FORM'); };
+  const goTemplateEdit = (t: ParsingTemplate) => { setSelectedTemplate(t); setView('TEMPLATE_FORM'); };
+
   // Catalogue CRUD Actions
   const handleSaveCatalogueEntry = (entry: CatalogueEntry) => {
     let updatedCatalogue = [...catalogue];
     
     if (entry.id) {
-      // Edit existing
       const index = updatedCatalogue.findIndex(e => e.id === entry.id);
-      if (index !== -1) {
-        updatedCatalogue[index] = entry;
-      } else {
-        updatedCatalogue.push(entry);
-      }
+      if (index !== -1) updatedCatalogue[index] = entry;
+      else updatedCatalogue.push(entry);
     } else {
-      // Create new
-      const newEntry = { ...entry, id: `cat-${Date.now()}` };
-      updatedCatalogue.push(newEntry);
+      updatedCatalogue.push({ ...entry, id: `cat-${Date.now()}` });
     }
-    
     setCatalogue(updatedCatalogue);
     goCatalogueList();
   };
@@ -89,41 +100,52 @@ const App: React.FC = () => {
   };
 
   const handleDeleteAllCatalogueEntries = () => {
-    if (window.confirm("WARNING: Are you sure you want to delete ALL catalogue entries? This action cannot be undone.")) {
+    if (window.confirm("WARNING: Are you sure you want to delete ALL catalogue entries?")) {
       setCatalogue([]);
+    }
+  };
+
+  // Template CRUD Actions
+  const handleSaveTemplate = (template: ParsingTemplate) => {
+    let updatedTemplates = [...templates];
+    if (template.id) {
+      const index = updatedTemplates.findIndex(t => t.id === template.id);
+      if (index !== -1) updatedTemplates[index] = template;
+      else updatedTemplates.push(template);
+    } else {
+      updatedTemplates.push({ ...template, id: `tmpl-${Date.now()}` });
+    }
+    setTemplates(updatedTemplates);
+    goTemplateList();
+  };
+
+  const handleDeleteTemplate = (id: string) => {
+    if (window.confirm("Delete this template?")) {
+      setTemplates(prev => prev.filter(t => t.id !== id));
     }
   };
 
   // Product CRUD Actions
   const handleSaveProduct = (product: Product) => {
     let updatedProducts = [...products];
-
     if (product.id && !product.id.startsWith('draft-')) {
-       // Edit existing
        const index = updatedProducts.findIndex(p => p.id === product.id);
-       if (index !== -1) {
-         updatedProducts[index] = product;
-       } else {
-         updatedProducts.push(product);
-       }
+       if (index !== -1) updatedProducts[index] = product;
+       else updatedProducts.push(product);
     } else {
-      // Create new (or saving a draft)
-      const newProduct = { ...product, id: `prod-${Date.now()}` };
-      updatedProducts.push(newProduct);
+      updatedProducts.push({ ...product, id: `prod-${Date.now()}` });
     }
-
     setProducts(updatedProducts);
     goProductList();
   };
 
   const handleDeleteProduct = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
+    if (window.confirm("Delete this product?")) {
       setProducts(prev => prev.filter(p => p.id !== id));
     }
   };
 
   const handleImport = (spec: ProductSpec) => {
-    // Transform parsed spec to Product
     const newProduct: Product = {
       id: 'draft-' + Date.now(),
       productCode: spec.productCode,
@@ -132,14 +154,9 @@ const App: React.FC = () => {
       materialType: spec.materialType,
       effectiveDate: spec.effectiveDate
     };
-    
-    // Set both the product header and the imported tests
     setSelectedProduct(newProduct);
     setImportedSpec(spec);
-    
     setView('PRODUCT_FORM');
-    // If we want to audit this action:
-    console.log("Audit: IMPORT_DOC", spec);
   };
 
   return (
@@ -154,32 +171,20 @@ const App: React.FC = () => {
           </div>
           
           <div className="flex space-x-1">
-            <button 
-              onClick={goProductList}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view.startsWith('PRODUCT') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}`}
-            >
-              Products
-            </button>
-            <button 
-              onClick={goCatalogueList}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view.startsWith('CATALOGUE') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}`}
-            >
-              Catalogue
-            </button>
+            <button onClick={goProductList} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view.startsWith('PRODUCT') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}`}>Products</button>
+            <button onClick={goCatalogueList} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view.startsWith('CATALOGUE') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}`}>Catalogue</button>
+            <button onClick={goTemplateList} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view.startsWith('TEMPLATE') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}`}>Templates</button>
           </div>
         </div>
 
         <div className="flex items-center space-x-4">
-           {/* Utility Icons */}
            <button onClick={() => toggleModal('exportTool', true)} className="text-gray-400 hover:text-green-400 transition-colors" title="Export Data">
              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
            </button>
            <button onClick={() => toggleModal('auditTrail', true)} className="text-gray-400 hover:text-yellow-400 transition-colors" title="Audit Logs">
              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
            </button>
-           
            <div className="w-px h-6 bg-gray-700 mx-2"></div>
-           
            <div className="flex items-center gap-2">
              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-xs font-semibold">JD</div>
            </div>
@@ -199,7 +204,7 @@ const App: React.FC = () => {
         
         {view === 'PRODUCT_FORM' && (
           <ProductForm 
-            key={selectedProduct ? selectedProduct.id : 'new'} // Force remount on import
+            key={selectedProduct ? selectedProduct.id : 'new'}
             product={selectedProduct} 
             initialTests={importedSpec?.tests}
             onSave={handleSaveProduct} 
@@ -226,6 +231,23 @@ const App: React.FC = () => {
             onCancel={goCatalogueList}
           />
         )}
+
+        {view === 'TEMPLATE_LIST' && (
+          <TemplateListView
+            templates={templates}
+            onCreate={goTemplateCreate}
+            onEdit={goTemplateEdit}
+            onDelete={handleDeleteTemplate}
+          />
+        )}
+
+        {view === 'TEMPLATE_FORM' && (
+          <TemplateForm
+            template={selectedTemplate}
+            onSave={handleSaveTemplate}
+            onCancel={goTemplateList}
+          />
+        )}
       </main>
 
       {/* Modals */}
@@ -234,6 +256,7 @@ const App: React.FC = () => {
         onClose={() => toggleModal('importDoc', false)}
         onImport={handleImport}
         catalogue={catalogue}
+        templates={templates}
       />
 
       <ManualMatchModal 

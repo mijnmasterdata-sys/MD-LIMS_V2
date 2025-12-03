@@ -1,5 +1,5 @@
 
-import { Product, TestItem, CatalogueEntry, AuditLog } from './types';
+import { Product, TestItem, CatalogueEntry, AuditLog, ParsingTemplate } from './types';
 
 export const DUMMY_PRODUCTS: Product[] = [
   { id: '1', productCode: 'P-1001', productName: 'Phosphate Buffer', version: '1.0', materialType: 'Raw Material', effectiveDate: '2023-01-01' },
@@ -55,6 +55,21 @@ export const DUMMY_CATALOGUE: CatalogueEntry[] = [
     category: 'Physical', type: 'Instrument', defaultGrade: 'Pharma', rounding: '3',
     synonyms: 'Specific Gravity', tags: '', priority: 'Low'
   },
+];
+
+export const DUMMY_TEMPLATES: ParsingTemplate[] = [
+  {
+    id: 'tmpl-1',
+    name: 'Standard Certificate of Analysis',
+    description: 'General layout for supplier COAs.',
+    customInstruction: 'Look for the "Test Name" column on the left and "Result" or "Specification" on the right. The Product Code is usually top-left labeled "Material No".'
+  },
+  {
+    id: 'tmpl-2',
+    name: 'Legacy Specs (Scanned)',
+    description: 'For older typewritten specifications.',
+    customInstruction: 'These files are OCR text. Expect noise. The limits are often in parentheses like "(Min 98%)". Ignore handwritten notes.'
+  }
 ];
 
 export const DUMMY_AUDIT_LOGS: AuditLog[] = [
