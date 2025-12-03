@@ -1,17 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import { Product, TestItem } from '../types';
 import { DUMMY_TESTS, MATERIAL_TYPES, RULES, DUMMY_CATALOGUE } from '../constants';
 
 interface ProductFormProps {
   product?: Product; // If null, creating new
+  initialTests?: TestItem[]; // For imported data
   onSave: () => void;
   onCancel: () => void;
   onImportClick: () => void;
 }
 
-const ProductForm: React.FC<ProductFormProps> = ({ product, onSave, onCancel, onImportClick }) => {
-  const [tests, setTests] = useState<TestItem[]>(product ? DUMMY_TESTS : []);
+const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, onSave, onCancel, onImportClick }) => {
+  const [tests, setTests] = useState<TestItem[]>([]);
+
+  // Initialize State
+  useEffect(() => {
+    if (initialTests && initialTests.length > 0) {
+      setTests(initialTests);
+    } else if (product) {
+      setTests(DUMMY_TESTS); // Or fetch real tests for existing product
+    } else {
+      setTests([]);
+    }
+  }, [product, initialTests]);
 
   // Dummy Handler
   const handleAddTest = () => {
@@ -21,7 +33,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSave, onCancel, on
       {
         ...DUMMY_TESTS[0], 
         id: `new-${Date.now()}`, 
-        order: tests.length + 1,
+        order: (tests.length + 1) * 10,
         matchStatus: 'MANUAL',
         confidenceScore: 100,
         testCode: 'NEW01',
@@ -82,7 +94,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onSave, onCancel, on
           </div>
            <div>
             <label className="block text-xs font-medium text-gray-400 mb-1 uppercase">Material Type</label>
-            <select className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+            <select className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none" defaultValue={product?.materialType}>
               {MATERIAL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>

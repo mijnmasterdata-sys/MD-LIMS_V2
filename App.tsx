@@ -7,13 +7,17 @@ import ImportDocumentModal from './components/ImportDocumentModal';
 import ManualMatchModal from './components/ManualMatchModal';
 import ExportToolModal from './components/ExportToolModal';
 import AuditTrailModal from './components/AuditTrailModal';
-import { ViewState, ModalState, Product, CatalogueEntry } from './types';
+import { ViewState, ModalState, Product, CatalogueEntry, ProductSpec, TestItem } from './types';
+import { DUMMY_CATALOGUE } from './constants';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('PRODUCT_LIST');
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
   const [selectedCatalogueEntry, setSelectedCatalogueEntry] = useState<CatalogueEntry | undefined>(undefined);
   
+  // State to hold imported spec data temporarily
+  const [importedSpec, setImportedSpec] = useState<ProductSpec | undefined>(undefined);
+
   const [modals, setModals] = useState<ModalState>({
     importDoc: false,
     manualMatch: false,
@@ -26,13 +30,33 @@ const App: React.FC = () => {
   };
 
   // View Navigation Helpers
-  const goProductList = () => { setSelectedProduct(undefined); setView('PRODUCT_LIST'); };
-  const goProductCreate = () => { setSelectedProduct(undefined); setView('PRODUCT_FORM'); };
-  const goProductEdit = (p: Product) => { setSelectedProduct(p); setView('PRODUCT_FORM'); };
+  const goProductList = () => { setSelectedProduct(undefined); setImportedSpec(undefined); setView('PRODUCT_LIST'); };
+  const goProductCreate = () => { setSelectedProduct(undefined); setImportedSpec(undefined); setView('PRODUCT_FORM'); };
+  const goProductEdit = (p: Product) => { setSelectedProduct(p); setImportedSpec(undefined); setView('PRODUCT_FORM'); };
   
   const goCatalogueList = () => { setSelectedCatalogueEntry(undefined); setView('CATALOGUE_LIST'); };
   const goCatalogueCreate = () => { setSelectedCatalogueEntry(undefined); setView('CATALOGUE_FORM'); };
   const goCatalogueEdit = (c: CatalogueEntry) => { setSelectedCatalogueEntry(c); setView('CATALOGUE_FORM'); };
+
+  const handleImport = (spec: ProductSpec) => {
+    // Transform parsed spec to Product
+    const newProduct: Product = {
+      id: 'draft-' + Date.now(),
+      productCode: spec.productCode,
+      productName: spec.productName,
+      version: spec.version,
+      materialType: spec.materialType,
+      effectiveDate: spec.effectiveDate
+    };
+    
+    // Set both the product header and the imported tests
+    setSelectedProduct(newProduct);
+    setImportedSpec(spec);
+    
+    setView('PRODUCT_FORM');
+    // If we want to audit this action:
+    console.log("Audit: IMPORT_DOC", spec);
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col font-sans">
@@ -89,7 +113,9 @@ const App: React.FC = () => {
         
         {view === 'PRODUCT_FORM' && (
           <ProductForm 
+            key={selectedProduct ? selectedProduct.id : 'new'} // Force remount on import
             product={selectedProduct} 
+            initialTests={importedSpec?.tests}
             onSave={goProductList} 
             onCancel={goProductList}
             onImportClick={() => toggleModal('importDoc', true)}
@@ -116,7 +142,8 @@ const App: React.FC = () => {
       <ImportDocumentModal 
         isOpen={modals.importDoc} 
         onClose={() => toggleModal('importDoc', false)}
-        onImport={() => { toggleModal('importDoc', false); toggleModal('manualMatch', true); /* trigger dummy flow */ }}
+        onImport={handleImport}
+        catalogue={DUMMY_CATALOGUE}
       />
 
       <ManualMatchModal 

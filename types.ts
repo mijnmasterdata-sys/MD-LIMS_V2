@@ -58,3 +58,24 @@ export interface ModalState {
   exportTool: boolean;
   auditTrail: boolean;
 }
+
+// Service Types
+export type ParseInput = 
+  | { type: 'file'; data: string; mimeType: 'application/pdf' } 
+  | { type: 'text'; data: string };
+
+export interface ProductSpec {
+  productCode: string;
+  productName: string;
+  materialType: string;
+  version: string;
+  effectiveDate: string;
+  tests: TestItem[];
+}
+
+export interface ParsedLine {
+  rawTestCode: string;
+  rawDescription: string;
+  rawLimit: string;
+  rawTextSpec: string;
+}
