@@ -62,13 +62,17 @@ export const DUMMY_TEMPLATES: ParsingTemplate[] = [
     id: 'tmpl-1',
     name: 'Standard Certificate of Analysis',
     description: 'General layout for supplier COAs.',
-    customInstruction: 'Look for the "Test Name" column on the left and "Result" or "Specification" on the right. The Product Code is usually top-left labeled "Material No".'
+    customInstruction: 'Look for the "Test Name" column on the left and "Result" or "Specification" on the right. The Product Code is usually top-left labeled "Material No".',
+    mappings: [],
+    sampleText: ''
   },
   {
     id: 'tmpl-2',
     name: 'Legacy Specs (Scanned)',
     description: 'For older typewritten specifications.',
-    customInstruction: 'These files are OCR text. Expect noise. The limits are often in parentheses like "(Min 98%)". Ignore handwritten notes.'
+    customInstruction: 'These files are OCR text. Expect noise. The limits are often in parentheses like "(Min 98%)". Ignore handwritten notes.',
+    mappings: [],
+    sampleText: ''
   }
 ];
 

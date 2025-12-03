@@ -115,7 +115,7 @@ export async function parseSpecDocument(
 
 // --- Helper Functions ---
 
-async function extractTextFromPdf(data: Uint8Array): Promise<string> {
+export async function extractTextFromPdf(data: Uint8Array): Promise<string> {
   const doc = await pdfjsLib.getDocument({ data }).promise;
   let fullText = "";
   for (let i = 1; i <= doc.numPages; i++) {

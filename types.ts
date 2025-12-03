@@ -44,11 +44,20 @@ export interface CatalogueEntry {
   priority: 'High' | 'Medium' | 'Low';
 }
 
+export interface TemplateMapping {
+  id: string;
+  text: string;
+  fieldType: 'Analysis' | 'Component' | 'Unit' | 'Spec Min' | 'Spec Max' | 'Spec Text' | 'Reference' | 'Reported Name';
+  color: string;
+}
+
 export interface ParsingTemplate {
   id: string;
   name: string;
   description: string;
   customInstruction: string; // The specific structural prompt for Gemini
+  sampleText?: string; // The raw text of the sample file
+  mappings?: TemplateMapping[]; // The user-defined tags
 }
 
 export interface AuditLog {
