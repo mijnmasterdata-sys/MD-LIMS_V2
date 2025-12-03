@@ -20,6 +20,7 @@ const CatalogueEntryForm: React.FC<CatalogueEntryFormProps> = ({ entry, onSave, 
     category: entry?.category || 'Chemical',
     type: entry?.type || '',
     defaultGrade: entry?.defaultGrade || '',
+    rounding: entry?.rounding || '',
     synonyms: entry?.synonyms || '',
     tags: entry?.tags || '',
     priority: entry?.priority || 'Medium'
@@ -41,14 +42,14 @@ const CatalogueEntryForm: React.FC<CatalogueEntryFormProps> = ({ entry, onSave, 
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-in slide-in-from-bottom-4 duration-300 bg-gray-800 p-8 rounded-lg border border-gray-700 shadow-xl mt-10">
+    <div className="max-w-4xl mx-auto space-y-6 animate-in slide-in-from-bottom-4 duration-300 bg-gray-800 p-8 rounded-lg border border-gray-700 shadow-xl mt-10">
       <h2 className="text-2xl font-bold text-white mb-6">
         {entry ? `Edit Catalogue Entry: ${formData.testCode}` : 'New Catalogue Entry'}
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Basic Info */}
-        <div className="col-span-1">
+        <div className="col-span-1 md:col-span-1">
           <label className="block text-sm font-medium text-gray-400 mb-1">Test Code</label>
           <input 
             type="text" 
@@ -58,7 +59,7 @@ const CatalogueEntryForm: React.FC<CatalogueEntryFormProps> = ({ entry, onSave, 
           />
         </div>
         
-        <div className="col-span-1">
+        <div className="col-span-1 md:col-span-1">
           <label className="block text-sm font-medium text-gray-400 mb-1">Category</label>
            <select 
              value={formData.category} 
@@ -69,7 +70,7 @@ const CatalogueEntryForm: React.FC<CatalogueEntryFormProps> = ({ entry, onSave, 
            </select>
         </div>
 
-        <div className="col-span-1">
+        <div className="col-span-1 md:col-span-2">
           <label className="block text-sm font-medium text-gray-400 mb-1">Analysis Name</label>
           <input 
             type="text" 
@@ -79,7 +80,7 @@ const CatalogueEntryForm: React.FC<CatalogueEntryFormProps> = ({ entry, onSave, 
           />
         </div>
 
-        <div className="col-span-1">
+        <div className="col-span-1 md:col-span-2">
           <label className="block text-sm font-medium text-gray-400 mb-1">Component Name</label>
           <input 
             type="text" 
@@ -90,7 +91,7 @@ const CatalogueEntryForm: React.FC<CatalogueEntryFormProps> = ({ entry, onSave, 
         </div>
 
         <div className="col-span-1">
-          <label className="block text-sm font-medium text-gray-400 mb-1">Units</label>
+          <label className="block text-sm font-medium text-gray-400 mb-1">Unit</label>
           <input 
             type="text" 
             value={formData.units} 
@@ -120,6 +121,17 @@ const CatalogueEntryForm: React.FC<CatalogueEntryFormProps> = ({ entry, onSave, 
         </div>
 
         <div className="col-span-1">
+          <label className="block text-sm font-medium text-gray-400 mb-1">Rounding</label>
+          <input 
+            type="text" 
+            value={formData.rounding} 
+            onChange={(e) => handleChange('rounding', e.target.value)}
+            className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none" 
+            placeholder="e.g. 2, 0.1, N/A"
+          />
+        </div>
+
+        <div className="col-span-1">
           <label className="block text-sm font-medium text-gray-400 mb-1">Priority</label>
           <select 
             value={formData.priority} 
@@ -133,11 +145,11 @@ const CatalogueEntryForm: React.FC<CatalogueEntryFormProps> = ({ entry, onSave, 
         </div>
 
         {/* Advanced Matching Fields */}
-        <div className="col-span-2 pt-4 border-t border-gray-700">
+        <div className="col-span-1 md:col-span-2 lg:col-span-4 pt-4 border-t border-gray-700">
            <h3 className="text-sm font-semibold text-blue-400 mb-4">Matching Intelligence</h3>
         </div>
 
-        <div className="col-span-2">
+        <div className="col-span-1 md:col-span-2 lg:col-span-4">
           <label className="block text-sm font-medium text-gray-400 mb-1">Synonyms (Comma separated)</label>
           <textarea 
             rows={2} 
@@ -149,7 +161,7 @@ const CatalogueEntryForm: React.FC<CatalogueEntryFormProps> = ({ entry, onSave, 
           <p className="text-xs text-gray-500 mt-1">Used by the matching engine to identify this test in documents.</p>
         </div>
 
-        <div className="col-span-2">
+        <div className="col-span-1 md:col-span-2 lg:col-span-4">
           <label className="block text-sm font-medium text-gray-400 mb-1">Tags</label>
           <input 
             type="text" 

@@ -1,3 +1,4 @@
+
 import { Product, TestItem, CatalogueEntry, AuditLog } from './types';
 
 export const DUMMY_PRODUCTS: Product[] = [
@@ -36,22 +37,22 @@ export const DUMMY_TESTS: TestItem[] = [
 export const DUMMY_CATALOGUE: CatalogueEntry[] = [
   { 
     id: 'c1', testCode: 'APP01', analysis: 'Appearance', component: 'Appearance', units: '-', 
-    category: 'Physical', type: 'Visual', defaultGrade: 'Pharma',
+    category: 'Physical', type: 'Visual', defaultGrade: 'Pharma', rounding: 'N/A',
     synonyms: 'Visual, Clarity, Color', tags: 'Core, USP', priority: 'High'
   },
   { 
     id: 'c2', testCode: 'PH01', analysis: 'pH', component: 'pH Value', units: 'pH', 
-    category: 'Chemical', type: 'Instrument', defaultGrade: 'Pharma',
+    category: 'Chemical', type: 'Instrument', defaultGrade: 'Pharma', rounding: '1',
     synonyms: 'Acidity, Alkalinity, Hydrogen Ion', tags: 'Core', priority: 'High'
   },
   { 
     id: 'c3', testCode: 'AS01', analysis: 'Assay', component: 'Concentration', units: '%', 
-    category: 'Chemical', type: 'HPLC', defaultGrade: 'Tech',
+    category: 'Chemical', type: 'HPLC', defaultGrade: 'Tech', rounding: '2',
     synonyms: 'Potency, Purity', tags: 'HPLC, Slow', priority: 'Medium'
   },
   { 
     id: 'c4', testCode: 'DN01', analysis: 'Density', component: 'Density', units: 'g/mL', 
-    category: 'Physical', type: 'Instrument', defaultGrade: 'Pharma',
+    category: 'Physical', type: 'Instrument', defaultGrade: 'Pharma', rounding: '3',
     synonyms: 'Specific Gravity', tags: '', priority: 'Low'
   },
 ];

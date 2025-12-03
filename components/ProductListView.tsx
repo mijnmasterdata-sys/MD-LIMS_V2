@@ -1,14 +1,15 @@
 import React from 'react';
 import Button from './Button';
 import { Product } from '../types';
-import { DUMMY_PRODUCTS } from '../constants';
 
 interface ProductListViewProps {
+  products: Product[];
   onEditProduct: (product: Product) => void;
   onCreateProduct: () => void;
+  onDeleteProduct: (id: string) => void;
 }
 
-const ProductListView: React.FC<ProductListViewProps> = ({ onEditProduct, onCreateProduct }) => {
+const ProductListView: React.FC<ProductListViewProps> = ({ products, onEditProduct, onCreateProduct, onDeleteProduct }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex justify-between items-center">
@@ -32,7 +33,7 @@ const ProductListView: React.FC<ProductListViewProps> = ({ onEditProduct, onCrea
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700 bg-gray-800">
-            {DUMMY_PRODUCTS.map((product) => (
+            {products.map((product) => (
               <tr key={product.id} className="hover:bg-gray-750 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-400">{product.productCode}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-200">{product.productName}</td>
@@ -46,13 +47,16 @@ const ProductListView: React.FC<ProductListViewProps> = ({ onEditProduct, onCrea
                   >
                     Edit
                   </button>
-                  <button className="text-red-400 hover:text-red-300 transition-colors">
+                  <button 
+                    onClick={() => onDeleteProduct(product.id)}
+                    className="text-red-400 hover:text-red-300 transition-colors"
+                  >
                     Delete
                   </button>
                 </td>
               </tr>
             ))}
-            {DUMMY_PRODUCTS.length === 0 && (
+            {products.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                   No products found. Create one to get started.

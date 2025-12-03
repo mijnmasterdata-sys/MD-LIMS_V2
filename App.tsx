@@ -8,7 +8,7 @@ import ManualMatchModal from './components/ManualMatchModal';
 import ExportToolModal from './components/ExportToolModal';
 import AuditTrailModal from './components/AuditTrailModal';
 import { ViewState, ModalState, Product, CatalogueEntry, ProductSpec, TestItem } from './types';
-import { DUMMY_CATALOGUE } from './constants';
+import { DUMMY_CATALOGUE, DUMMY_PRODUCTS } from './constants';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('PRODUCT_LIST');
@@ -21,10 +21,21 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : DUMMY_CATALOGUE;
   });
 
+  // Lifted Product State with Persistence
+  const [products, setProducts] = useState<Product[]>(() => {
+    const saved = localStorage.getItem('LIMS_PRODUCTS');
+    return saved ? JSON.parse(saved) : DUMMY_PRODUCTS;
+  });
+
   // Persist catalogue changes
   useEffect(() => {
     localStorage.setItem('LIMS_CATALOGUE', JSON.stringify(catalogue));
   }, [catalogue]);
+
+  // Persist product changes
+  useEffect(() => {
+    localStorage.setItem('LIMS_PRODUCTS', JSON.stringify(products));
+  }, [products]);
   
   // State to hold imported spec data temporarily
   const [importedSpec, setImportedSpec] = useState<ProductSpec | undefined>(undefined);
@@ -59,7 +70,6 @@ const App: React.FC = () => {
       if (index !== -1) {
         updatedCatalogue[index] = entry;
       } else {
-        // Fallback if ID exists but not found (unlikely)
         updatedCatalogue.push(entry);
       }
     } else {
@@ -75,6 +85,40 @@ const App: React.FC = () => {
   const handleDeleteCatalogueEntry = (id: string) => {
     if (window.confirm("Are you sure you want to delete this catalogue entry?")) {
       setCatalogue(prev => prev.filter(e => e.id !== id));
+    }
+  };
+
+  const handleDeleteAllCatalogueEntries = () => {
+    if (window.confirm("WARNING: Are you sure you want to delete ALL catalogue entries? This action cannot be undone.")) {
+      setCatalogue([]);
+    }
+  };
+
+  // Product CRUD Actions
+  const handleSaveProduct = (product: Product) => {
+    let updatedProducts = [...products];
+
+    if (product.id && !product.id.startsWith('draft-')) {
+       // Edit existing
+       const index = updatedProducts.findIndex(p => p.id === product.id);
+       if (index !== -1) {
+         updatedProducts[index] = product;
+       } else {
+         updatedProducts.push(product);
+       }
+    } else {
+      // Create new (or saving a draft)
+      const newProduct = { ...product, id: `prod-${Date.now()}` };
+      updatedProducts.push(newProduct);
+    }
+
+    setProducts(updatedProducts);
+    goProductList();
+  };
+
+  const handleDeleteProduct = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this product?")) {
+      setProducts(prev => prev.filter(p => p.id !== id));
     }
   };
 
@@ -146,8 +190,10 @@ const App: React.FC = () => {
       <main className="flex-1 p-6 max-w-[1920px] mx-auto w-full">
         {view === 'PRODUCT_LIST' && (
           <ProductListView 
+            products={products}
             onCreateProduct={goProductCreate} 
             onEditProduct={goProductEdit} 
+            onDeleteProduct={handleDeleteProduct}
           />
         )}
         
@@ -156,7 +202,7 @@ const App: React.FC = () => {
             key={selectedProduct ? selectedProduct.id : 'new'} // Force remount on import
             product={selectedProduct} 
             initialTests={importedSpec?.tests}
-            onSave={goProductList} 
+            onSave={handleSaveProduct} 
             onCancel={goProductList}
             onImportClick={() => toggleModal('importDoc', true)}
           />
@@ -169,6 +215,7 @@ const App: React.FC = () => {
             onCreate={goCatalogueCreate}
             onEdit={goCatalogueEdit}
             onDelete={handleDeleteCatalogueEntry}
+            onDeleteAll={handleDeleteAllCatalogueEntries}
           />
         )}
 

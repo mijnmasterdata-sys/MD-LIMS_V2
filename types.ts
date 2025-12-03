@@ -1,3 +1,4 @@
+
 export interface Product {
   id: string;
   productCode: string;
@@ -37,6 +38,7 @@ export interface CatalogueEntry {
   category: string;
   type: string;
   defaultGrade: string;
+  rounding: string;
   synonyms: string;
   tags: string;
   priority: 'High' | 'Medium' | 'Low';

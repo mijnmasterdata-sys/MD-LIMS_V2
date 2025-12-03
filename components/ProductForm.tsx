@@ -6,28 +6,47 @@ import { DUMMY_TESTS, MATERIAL_TYPES, RULES, DUMMY_CATALOGUE } from '../constant
 interface ProductFormProps {
   product?: Product; // If null, creating new
   initialTests?: TestItem[]; // For imported data
-  onSave: () => void;
+  onSave: (product: Product) => void;
   onCancel: () => void;
   onImportClick: () => void;
 }
 
 const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, onSave, onCancel, onImportClick }) => {
+  const [headerData, setHeaderData] = useState<Product>({
+    id: product?.id || '',
+    productCode: product?.productCode || '',
+    productName: product?.productName || '',
+    version: product?.version || '',
+    materialType: product?.materialType || 'Raw Material',
+    effectiveDate: product?.effectiveDate || ''
+  });
+
   const [tests, setTests] = useState<TestItem[]>([]);
 
-  // Initialize State
+  // Initialize Tests State
   useEffect(() => {
     if (initialTests && initialTests.length > 0) {
       setTests(initialTests);
-    } else if (product) {
-      setTests(DUMMY_TESTS); // Or fetch real tests for existing product
+    } else if (product && !initialTests) {
+      // If editing existing product (simulated), load dummy tests if empty, or keep empty
+      // In a real app we'd fetch tests for this product ID
+      if (product.id && !product.id.startsWith('draft') && !product.id.startsWith('new')) {
+         setTests(DUMMY_TESTS); 
+      } else {
+         setTests([]);
+      }
     } else {
       setTests([]);
     }
   }, [product, initialTests]);
 
+  // Handle header changes
+  const handleHeaderChange = (field: keyof Product, value: string) => {
+    setHeaderData(prev => ({ ...prev, [field]: value }));
+  };
+
   // Dummy Handler
   const handleAddTest = () => {
-    // Add dummy test
     setTests([
       ...tests, 
       {
@@ -37,13 +56,21 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, onSave
         matchStatus: 'MANUAL',
         confidenceScore: 100,
         testCode: 'NEW01',
-        description: 'New Test Entry'
+        description: 'New Test Entry',
+        analysis: '',
+        component: ''
       }
     ]);
   };
 
   const handleRemoveTest = (id: string) => {
     setTests(tests.filter(t => t.id !== id));
+  };
+
+  const handleFormSave = () => {
+    // In a real app, we would also save 'tests'. 
+    // Here we pass the header data back to update the list view.
+    onSave(headerData);
   };
 
   const getStatusBadge = (status: TestItem['matchStatus']) => {
@@ -69,7 +96,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, onSave
       <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-md">
         <div className="flex justify-between items-start mb-6">
           <h2 className="text-2xl font-bold text-white">
-            {product ? `Edit Product: ${product.productCode}` : 'Create New Product'}
+            {headerData.productCode ? `Edit Product: ${headerData.productCode}` : 'Create New Product'}
           </h2>
           <div className="space-x-3">
              <Button variant="secondary" onClick={onImportClick} className="flex items-center gap-2">
@@ -82,25 +109,52 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, onSave
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1 uppercase">Product Code</label>
-            <input type="text" defaultValue={product?.productCode} className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none" placeholder="e.g. P-1001" />
+            <input 
+              type="text" 
+              value={headerData.productCode} 
+              onChange={(e) => handleHeaderChange('productCode', e.target.value)}
+              className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none" 
+              placeholder="e.g. P-1001" 
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1 uppercase">Product Name</label>
-            <input type="text" defaultValue={product?.productName} className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none" placeholder="e.g. Phosphate Buffer" />
+            <input 
+              type="text" 
+              value={headerData.productName} 
+              onChange={(e) => handleHeaderChange('productName', e.target.value)}
+              className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none" 
+              placeholder="e.g. Phosphate Buffer" 
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1 uppercase">Version</label>
-            <input type="text" defaultValue={product?.version} className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none" placeholder="1.0" />
+            <input 
+              type="text" 
+              value={headerData.version} 
+              onChange={(e) => handleHeaderChange('version', e.target.value)}
+              className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none" 
+              placeholder="1.0" 
+            />
           </div>
            <div>
             <label className="block text-xs font-medium text-gray-400 mb-1 uppercase">Material Type</label>
-            <select className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none" defaultValue={product?.materialType}>
+            <select 
+              value={headerData.materialType} 
+              onChange={(e) => handleHeaderChange('materialType', e.target.value)}
+              className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+            >
               {MATERIAL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1 uppercase">Effective Date</label>
-            <input type="date" defaultValue={product?.effectiveDate} className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none" />
+            <input 
+              type="date" 
+              value={headerData.effectiveDate} 
+              onChange={(e) => handleHeaderChange('effectiveDate', e.target.value)}
+              className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none" 
+            />
           </div>
         </div>
       </div>
@@ -232,7 +286,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, onSave
 
       <div className="flex justify-end space-x-4 pt-4 border-t border-gray-700">
         <Button variant="secondary" size="lg" onClick={onCancel}>Cancel</Button>
-        <Button variant="primary" size="lg" onClick={onSave}>Save Product</Button>
+        <Button variant="primary" size="lg" onClick={handleFormSave}>Save Product</Button>
       </div>
     </div>
   );
