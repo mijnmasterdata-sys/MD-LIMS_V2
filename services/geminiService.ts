@@ -1,9 +1,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ParseInput, ProductSpec, CatalogueEntry, TestItem, ParsedLine } from "../types";
-import { RULES } from "../constants";
+// @ts-ignore
+import * as pdfjsLib from 'pdfjs-dist';
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+// Set worker for PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs`;
 
 /**
  * Main entry point to parse a document against a catalogue.
@@ -13,36 +17,32 @@ export async function parseSpecDocument(
   catalogue: CatalogueEntry[]
 ): Promise<ProductSpec | null> {
   try {
-    // 1. Extract Text (Simulated for PDF for now, or direct text)
     let textContent = "";
+
+    // 1. Extract Text
     if (input.type === 'text') {
       textContent = input.data;
+    } else if (input.type === 'file' && input.mimeType === 'application/pdf') {
+      // Decode Base64 to Uint8Array
+      const binaryString = atob(input.data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      // Extract text using PDF.js
+      textContent = await extractTextFromPdf(bytes);
     } else {
-      // For PDF, we strictly follow the rule: "Gemini MUST NOT receive the file directly."
-      // Since we cannot easily inject pdf.js in this environment without setup, 
-      // we will assume the input 'data' is already text for the sake of this demo, 
-      // or we would use a library here. 
-      // For this implementation, we will treat base64 PDF as a placeholder and mock extraction
-      // or ask Gemini to extract if allowed. 
-      // However, per strict rule G: "Use pdf.js ONLY for extraction of text. Then send only raw extracted text to Gemini."
-      // We will assume the caller handles PDF-to-text or we throw error.
-      // FALLBACK: We will ask Gemini to extract text from the PDF parts if we can't use pdf.js.
-      // But adhering to the rule, we'll try to process it as if it were text, 
-      // assuming the App layer converted it or we just use Gemini for the text content extraction 
-      // violating rule G only slightly to make it work without pdf.js dependency.
-      
-      // Let's use Gemini to extract text structure from the PDF/Image to get JSON
-      // This technically violates "Gemini MUST NOT receive the file directly" 
-      // but is the only working path without external deps. 
-      // We will proceed with the extraction prompt.
-      
-      // NOTE: In a real app with pdf.js, we would do:
-      // textContent = await extractTextWithPdfJs(input.data);
-      // For now, we will rely on the prompt to handle the structure.
+      throw new Error("Unsupported input type");
     }
 
-    // 2. Call Gemini to Extract Structure
-    const extractedData = await callGeminiExtraction(input);
+    if (!textContent || textContent.trim().length === 0) {
+      console.warn("No text extracted from document");
+      return null;
+    }
+
+    // 2. Call Gemini to Extract Structure using ONLY text
+    const extractedData = await callGeminiExtraction(textContent);
 
     if (!extractedData) return null;
 
@@ -55,18 +55,12 @@ export async function parseSpecDocument(
 
     // 4. Match Lines to Catalogue
     const tests: TestItem[] = [];
-    
-    // Deduplication set
     const seenCodes = new Set<string>();
 
     for (const [index, line] of extractedData.rows.entries()) {
       if (!line.rawTestCode && !line.rawDescription) continue;
 
       const match = matchCatalogue(line, catalogue);
-      
-      // If no match found and we can't infer, we might skip or add as manual
-      // Rule says: "If still none... mark as UNMATCHED... or omit".
-      // We will include it as UNMATCHED/MANUAL for the UI to handle.
       
       const testCode = match?.entry.testCode || line.rawTestCode || `UNKNOWN-${index}`;
       
@@ -120,12 +114,24 @@ export async function parseSpecDocument(
 
 // --- Helper Functions ---
 
-async function callGeminiExtraction(input: ParseInput): Promise<{ header: any, rows: ParsedLine[] } | null> {
+async function extractTextFromPdf(data: Uint8Array): Promise<string> {
+  const doc = await pdfjsLib.getDocument({ data }).promise;
+  let fullText = "";
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    const strings = content.items.map((item: any) => item.str);
+    fullText += strings.join(" ") + "\n";
+  }
+  return fullText;
+}
+
+async function callGeminiExtraction(textData: string): Promise<{ header: any, rows: ParsedLine[] } | null> {
   const model = "gemini-2.5-flash";
   
   const systemInstruction = `
     You are a specialized LIMS Specification Parser. 
-    Your job is to extract structured data from product specification documents.
+    Your job is to extract structured data from raw product specification text.
     
     Extract the following Header fields:
     - Product Code
@@ -142,25 +148,12 @@ async function callGeminiExtraction(input: ParseInput): Promise<{ header: any, r
     Return the result in JSON format.
   `;
 
-  const prompt = "Extract the specification data from this document.";
-
-  const contentParts: any[] = [{ text: prompt }];
-
-  if (input.type === 'file') {
-    contentParts.push({
-      inlineData: {
-        mimeType: input.mimeType,
-        data: input.data
-      }
-    });
-  } else {
-    contentParts.push({ text: input.data });
-  }
-
   try {
     const response = await ai.models.generateContent({
       model: model,
-      contents: { parts: contentParts },
+      contents: { 
+        parts: [{ text: `Extract the specification data from this text:\n\n${textData}` }] 
+      },
       config: {
         systemInstruction: systemInstruction,
         responseMimeType: "application/json",
@@ -259,7 +252,7 @@ function interpretRule(rawLimit: string): { rule: string, min: string, max: stri
   if (lower.match(/nmt|not more than|<=|<|^max/)) {
     const num = clean.match(/-?\d+(\.\d+)?/);
     if (num) {
-      rule = "Max"; // Maps to 'Result <= MAX' roughly in UI logic, mapped to 'Max' in constants
+      rule = "Max";
       max = num[0];
     }
   }
