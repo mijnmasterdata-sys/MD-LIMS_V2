@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ProductListView from './components/ProductListView';
 import ProductForm from './components/ProductForm';
 import CatalogueView from './components/CatalogueView';
@@ -14,6 +14,17 @@ const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('PRODUCT_LIST');
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
   const [selectedCatalogueEntry, setSelectedCatalogueEntry] = useState<CatalogueEntry | undefined>(undefined);
+  
+  // Lifted Catalogue State with Persistence
+  const [catalogue, setCatalogue] = useState<CatalogueEntry[]>(() => {
+    const saved = localStorage.getItem('LIMS_CATALOGUE');
+    return saved ? JSON.parse(saved) : DUMMY_CATALOGUE;
+  });
+
+  // Persist catalogue changes
+  useEffect(() => {
+    localStorage.setItem('LIMS_CATALOGUE', JSON.stringify(catalogue));
+  }, [catalogue]);
   
   // State to hold imported spec data temporarily
   const [importedSpec, setImportedSpec] = useState<ProductSpec | undefined>(undefined);
@@ -124,6 +135,8 @@ const App: React.FC = () => {
 
         {view === 'CATALOGUE_LIST' && (
           <CatalogueView 
+            entries={catalogue}
+            onUpdateEntries={setCatalogue}
             onCreate={goCatalogueCreate}
             onEdit={goCatalogueEdit}
           />
@@ -143,7 +156,7 @@ const App: React.FC = () => {
         isOpen={modals.importDoc} 
         onClose={() => toggleModal('importDoc', false)}
         onImport={handleImport}
-        catalogue={DUMMY_CATALOGUE}
+        catalogue={catalogue}
       />
 
       <ManualMatchModal 

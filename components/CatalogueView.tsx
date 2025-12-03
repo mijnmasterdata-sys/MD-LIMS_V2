@@ -1,15 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import Button from './Button';
 import { CatalogueEntry } from '../types';
-import { DUMMY_CATALOGUE } from '../constants';
 
 interface CatalogueViewProps {
+  entries: CatalogueEntry[];
+  onUpdateEntries: (entries: CatalogueEntry[]) => void;
   onEdit: (entry: CatalogueEntry) => void;
   onCreate: () => void;
 }
 
-const CatalogueView: React.FC<CatalogueViewProps> = ({ onEdit, onCreate }) => {
-  const [entries, setEntries] = useState<CatalogueEntry[]>(DUMMY_CATALOGUE);
+const CatalogueView: React.FC<CatalogueViewProps> = ({ entries, onUpdateEntries, onEdit, onCreate }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImportClick = () => {
@@ -68,7 +68,7 @@ const CatalogueView: React.FC<CatalogueViewProps> = ({ onEdit, onCreate }) => {
         newEntries.push(newEntry);
       }
 
-      setEntries(prev => [...prev, ...newEntries]);
+      onUpdateEntries([...entries, ...newEntries]);
       // Reset input
       if (fileInputRef.current) fileInputRef.current.value = '';
       alert(`Successfully imported ${newEntries.length} entries.`);
