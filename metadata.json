@@ -1,0 +1,5 @@
+{
+  "name": "LIMS Spec Builder UI",
+  "description": "A UI-only implementation of a LIMS Specification Builder application with dark mode, featuring product management, catalogue management, and various modal utilities.",
+  "requestFramePermissions": []
+}
