@@ -35,7 +35,7 @@ const App: React.FC = () => {
   const goCatalogueEdit = (c: CatalogueEntry) => { setSelectedCatalogueEntry(c); setView('CATALOGUE_FORM'); };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col font-sans">
+    <div className="app-shell min-h-screen bg-gray-900 text-gray-100 flex flex-col font-sans">
       
       {/* Top Navigation */}
       <nav className="border-b border-gray-800 bg-gray-950 px-6 py-3 flex justify-between items-center sticky top-0 z-40">
