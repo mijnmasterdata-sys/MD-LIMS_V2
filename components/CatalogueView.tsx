@@ -7,9 +7,10 @@ interface CatalogueViewProps {
   onUpdateEntries: (entries: CatalogueEntry[]) => void;
   onEdit: (entry: CatalogueEntry) => void;
   onCreate: () => void;
+  onDelete: (id: string) => void;
 }
 
-const CatalogueView: React.FC<CatalogueViewProps> = ({ entries, onUpdateEntries, onEdit, onCreate }) => {
+const CatalogueView: React.FC<CatalogueViewProps> = ({ entries, onUpdateEntries, onEdit, onCreate, onDelete }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImportClick = () => {
@@ -130,7 +131,7 @@ const CatalogueView: React.FC<CatalogueViewProps> = ({ entries, onUpdateEntries,
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                   <button onClick={() => onEdit(entry)} className="text-blue-400 hover:text-blue-300">Edit</button>
-                  <button className="text-red-400 hover:text-red-300">Delete</button>
+                  <button onClick={() => onDelete(entry.id)} className="text-red-400 hover:text-red-300">Delete</button>
                 </td>
               </tr>
             ))}

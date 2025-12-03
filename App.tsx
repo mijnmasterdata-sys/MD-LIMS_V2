@@ -49,6 +49,35 @@ const App: React.FC = () => {
   const goCatalogueCreate = () => { setSelectedCatalogueEntry(undefined); setView('CATALOGUE_FORM'); };
   const goCatalogueEdit = (c: CatalogueEntry) => { setSelectedCatalogueEntry(c); setView('CATALOGUE_FORM'); };
 
+  // Catalogue CRUD Actions
+  const handleSaveCatalogueEntry = (entry: CatalogueEntry) => {
+    let updatedCatalogue = [...catalogue];
+    
+    if (entry.id) {
+      // Edit existing
+      const index = updatedCatalogue.findIndex(e => e.id === entry.id);
+      if (index !== -1) {
+        updatedCatalogue[index] = entry;
+      } else {
+        // Fallback if ID exists but not found (unlikely)
+        updatedCatalogue.push(entry);
+      }
+    } else {
+      // Create new
+      const newEntry = { ...entry, id: `cat-${Date.now()}` };
+      updatedCatalogue.push(newEntry);
+    }
+    
+    setCatalogue(updatedCatalogue);
+    goCatalogueList();
+  };
+
+  const handleDeleteCatalogueEntry = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this catalogue entry?")) {
+      setCatalogue(prev => prev.filter(e => e.id !== id));
+    }
+  };
+
   const handleImport = (spec: ProductSpec) => {
     // Transform parsed spec to Product
     const newProduct: Product = {
@@ -139,13 +168,14 @@ const App: React.FC = () => {
             onUpdateEntries={setCatalogue}
             onCreate={goCatalogueCreate}
             onEdit={goCatalogueEdit}
+            onDelete={handleDeleteCatalogueEntry}
           />
         )}
 
         {view === 'CATALOGUE_FORM' && (
           <CatalogueEntryForm 
             entry={selectedCatalogueEntry}
-            onSave={goCatalogueList}
+            onSave={handleSaveCatalogueEntry}
             onCancel={goCatalogueList}
           />
         )}
