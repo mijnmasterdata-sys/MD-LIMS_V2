@@ -7,7 +7,7 @@ interface ProductFormProps {
   product?: Product; // If null, creating new
   initialTests?: TestItem[]; // For imported data
   catalogue: CatalogueEntry[];
-  onSave: (product: Product) => void;
+  onSave: (product: Product, tests: TestItem[]) => void;
   onCancel: () => void;
   onImportClick: () => void;
 }
@@ -25,6 +25,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, catalo
 
   const [tests, setTests] = useState<TestItem[]>([]);
   const [selectedCatalogueId, setSelectedCatalogueId] = useState<string>('');
+
+  // Memoized list of all unique analysis names for dropdowns
+  const allAnalyses = useMemo(() => {
+    const analyses = new Set<string>();
+    catalogue.forEach(entry => analyses.add(entry.analysis));
+    return Array.from(analyses).sort();
+  }, [catalogue]);
 
   // Memoized calculation for duplicate components
   const duplicateComponents = useMemo(() => {
@@ -67,8 +74,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, catalo
   useEffect(() => {
     if (initialTests && initialTests.length > 0) {
       setTests(initialTests);
+    } else if (product?.tests) {
+      setTests(product.tests);
     } else if (product && !initialTests) {
-      // If editing existing product (simulated), load dummy tests if empty, or keep empty
+      // If editing existing product (simulated, e.g. from DUMMY_PRODUCTS), load dummy tests if empty.
       if (product.id && !product.id.startsWith('draft') && !product.id.startsWith('new')) {
          setTests(DUMMY_TESTS); 
       } else {
@@ -161,7 +170,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, catalo
   };
 
   const handleFormSave = () => {
-    onSave(headerData);
+    onSave(headerData, tests);
   };
 
   const getStatusBadge = (status: TestItem['matchStatus']) => {
@@ -178,6 +187,16 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, catalo
     if (score >= 90) return 'bg-green-500';
     if (score >= 60) return 'bg-yellow-500';
     return 'bg-red-500';
+  };
+
+  const getSuggestionSelectClass = (status: TestItem['matchStatus']) => {
+    switch (status) {
+        case 'LOW_CONFIDENCE':
+            return "w-full bg-yellow-50 dark:bg-yellow-900/30 text-[10px] text-yellow-700 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-800 rounded px-1 py-0.5 focus:outline-none";
+        case 'UNMATCHED':
+        default:
+            return "w-full bg-blue-50 dark:bg-blue-900/30 text-[10px] text-blue-700 dark:text-blue-200 border border-blue-200 dark:border-blue-800 rounded px-1 py-0.5 focus:outline-none";
+    }
   };
 
   return (
@@ -330,17 +349,45 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, catalo
                    </td>
                    <td className="px-3 py-2">
                      <div className="flex flex-col gap-1">
-                       <input type="text" value={test.analysis} onChange={(e) => handleTestChange(test.id, 'analysis', e.target.value)} className="w-full bg-transparent border-none text-xs text-gray-900 dark:text-white focus:ring-0 p-0" />
-                       {test.matchStatus === 'UNMATCHED' && test.suggestions && test.suggestions.length > 0 && (
+                       <input type="text" value={test.analysis} onChange={(e) => handleTestChange(test.id, 'analysis', e.target.value)} className={`w-full bg-transparent border-none text-xs focus:ring-0 p-0 ${test.confidenceScore < 15 && test.matchStatus !== 'MANUAL' ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`} />
+                       
+                       {test.confidenceScore < 15 && test.matchStatus !== 'MANUAL' ? (
+                         <select
+                           onChange={(e) => {
+                             const newAnalysis = e.target.value;
+                             if (!newAnalysis) return;
+                             const bestMatchingEntry = catalogue.find(c => c.analysis === newAnalysis);
+                             if (bestMatchingEntry) {
+                               handleTestUpdate(test.id, {
+                                 analysis: bestMatchingEntry.analysis,
+                                 component: bestMatchingEntry.component,
+                                 testCode: bestMatchingEntry.testCode,
+                                 units: bestMatchingEntry.units,
+                                 category: bestMatchingEntry.category,
+                                 matchStatus: 'MANUAL',
+                                 confidenceScore: 100,
+                                 suggestions: []
+                               });
+                             }
+                           }}
+                           value=""
+                           className={getSuggestionSelectClass('UNMATCHED')}
+                         >
+                           <option value="">Correct Analysis...</option>
+                           {allAnalyses.map(analysisName => (
+                             <option key={analysisName} value={analysisName}>{analysisName}</option>
+                           ))}
+                         </select>
+                       ) : test.suggestions && test.suggestions.length > 0 ? (
                          <select 
-                          className="w-full bg-blue-50 dark:bg-blue-900/30 text-[10px] text-blue-700 dark:text-blue-200 border border-blue-200 dark:border-blue-800 rounded px-1 py-0.5 focus:outline-none"
-                          onChange={(e) => handleSuggestionSelect(test.id, e.target.value)}
-                          value=""
-                        >
+                           className={getSuggestionSelectClass(test.matchStatus)}
+                           onChange={(e) => handleSuggestionSelect(test.id, e.target.value)}
+                           value=""
+                         >
                            <option value="">Match Suggestion...</option>
                            {test.suggestions.map(s => <option key={s.id} value={s.id}>{s.testCode} - {s.analysis}</option>)}
                          </select>
-                       )}
+                       ) : null}
                      </div>
                    </td>
                    <td className="px-3 py-2">

@@ -85,7 +85,7 @@ export async function parseSpecDocument(
         order: (index + 1) * 10,
         matchStatus: match ? (match.confidence >= 95 ? "MATCHED" : "LOW_CONFIDENCE") : "UNMATCHED",
         confidenceScore: match ? match.confidence : 0,
-        suggestions: match ? [] : findSuggestions(line, catalogue),
+        suggestions: (match && match.confidence >= 95) ? [] : findSuggestions(line, catalogue),
 
         analysis: match?.entry.analysis || line.rawDescription || "--- UNMATCHED ---",
         component: match?.entry.component || "---",
@@ -472,12 +472,9 @@ function matchCatalogue(
     }
   }
 
-  // threshold: only accept if >= 70, otherwise treat as unmatched
-  if (best && best.confidence >= 70) {
-    return best;
-  }
-
-  return null;
+  // Return the best match found, even if confidence is low.
+  // The calling function will handle the status (e.g., LOW_CONFIDENCE).
+  return best;
 }
 
 function findSuggestions(

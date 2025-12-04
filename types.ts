@@ -8,6 +8,7 @@ export interface Product {
   materialType: string;
   effectiveDate?: string;
   packDescription?: string;
+  tests?: TestItem[];
 }
 
 export interface TestItem {
@@ -75,6 +76,7 @@ export type ViewState = 'PRODUCT_LIST' | 'PRODUCT_FORM' | 'CATALOGUE_LIST' | 'CA
 
 export interface ModalState {
   importDoc: boolean;
+  massImport: boolean;
   manualMatch: boolean;
   exportTool: boolean;
   auditTrail: boolean;

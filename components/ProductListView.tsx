@@ -7,9 +7,10 @@ interface ProductListViewProps {
   onEditProduct: (product: Product) => void;
   onCreateProduct: () => void;
   onDeleteProduct: (id: string) => void;
+  onMassImportClick: () => void;
 }
 
-const ProductListView: React.FC<ProductListViewProps> = ({ products, onEditProduct, onCreateProduct, onDeleteProduct }) => {
+const ProductListView: React.FC<ProductListViewProps> = ({ products, onEditProduct, onCreateProduct, onDeleteProduct, onMassImportClick }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex justify-between items-center">
@@ -17,7 +18,13 @@ const ProductListView: React.FC<ProductListViewProps> = ({ products, onEditProdu
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Products</h2>
           <p className="text-gray-500 dark:text-gray-400 text-sm">Manage product specifications and versions.</p>
         </div>
-        <Button onClick={onCreateProduct} variant="primary">+ Create Product</Button>
+        <div className="flex items-center gap-3">
+           <Button onClick={onMassImportClick} variant="secondary">
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+              Mass Import
+           </Button>
+           <Button onClick={onCreateProduct} variant="primary">+ Create Product</Button>
+        </div>
       </div>
 
       <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg bg-white dark:bg-gray-800">

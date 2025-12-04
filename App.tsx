@@ -6,6 +6,7 @@ import CatalogueEntryForm from './components/CatalogueEntryForm';
 import TemplateListView from './components/TemplateListView';
 import TemplateForm from './components/TemplateForm';
 import ImportDocumentModal from './components/ImportDocumentModal';
+import MassImportModal from './components/MassImportModal';
 import ManualMatchModal from './components/ManualMatchModal';
 import ExportToolModal from './components/ExportToolModal';
 import AuditTrailModal from './components/AuditTrailModal';
@@ -71,6 +72,7 @@ const App: React.FC = () => {
 
   const [modals, setModals] = useState<ModalState>({
     importDoc: false,
+    massImport: false,
     manualMatch: false,
     exportTool: false,
     auditTrail: false,
@@ -141,17 +143,29 @@ const App: React.FC = () => {
   };
 
   // Product CRUD Actions
-  const handleSaveProduct = (product: Product) => {
+  const handleSaveProduct = (product: Product, tests: TestItem[]) => {
+    const fullProduct = { ...product, tests };
+    
     let updatedProducts = [...products];
     if (product.id && !product.id.startsWith('draft-')) {
        const index = updatedProducts.findIndex(p => p.id === product.id);
-       if (index !== -1) updatedProducts[index] = product;
-       else updatedProducts.push(product);
+       if (index !== -1) {
+         updatedProducts[index] = fullProduct;
+       } else {
+         // Fallback: add as new if ID not found for some reason
+         updatedProducts.push({ ...fullProduct, id: `prod-${Date.now()}` });
+       }
     } else {
-      updatedProducts.push({ ...product, id: `prod-${Date.now()}` });
+      // Handles new products (id: '') and imported products (id: 'draft-...')
+      updatedProducts.push({ ...fullProduct, id: `prod-${Date.now()}` });
     }
     setProducts(updatedProducts);
     goProductList();
+  };
+
+  const handleSaveMassImport = (newProducts: Product[]) => {
+    setProducts(prev => [...prev, ...newProducts]);
+    // Optionally, could navigate to product list or just close modal
   };
 
   const handleDeleteProduct = (id: string) => {
@@ -216,6 +230,7 @@ const App: React.FC = () => {
             onCreateProduct={goProductCreate} 
             onEditProduct={goProductEdit} 
             onDeleteProduct={handleDeleteProduct}
+            onMassImportClick={() => toggleModal('massImport', true)}
           />
         )}
         
@@ -273,6 +288,14 @@ const App: React.FC = () => {
         isOpen={modals.importDoc} 
         onClose={() => toggleModal('importDoc', false)}
         onImport={handleImport}
+        catalogue={catalogue}
+        templates={templates}
+      />
+
+      <MassImportModal
+        isOpen={modals.massImport}
+        onClose={() => toggleModal('massImport', false)}
+        onSave={handleSaveMassImport}
         catalogue={catalogue}
         templates={templates}
       />
