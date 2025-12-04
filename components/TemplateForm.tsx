@@ -48,9 +48,9 @@ const TemplateForm: React.FC<TemplateFormProps> = ({ template, onSave, onCancel 
         const bytes = new Uint8Array(arrayBuffer);
         const text = await extractTextFromPdf(bytes);
         setFormData(prev => ({ ...prev, sampleText: text }));
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error extracting text", err);
-        alert("Failed to extract text from PDF.");
+        alert(`Failed to extract text from PDF: ${err.message || 'Unknown error'}`);
       } finally {
         setIsLoading(false);
       }
@@ -104,14 +104,16 @@ const TemplateForm: React.FC<TemplateFormProps> = ({ template, onSave, onCancel 
     let instruction = "Structure analysis based on user tags:\n\n";
     
     // Group by field type
-    const grouped = formData.mappings.reduce((acc, curr) => {
-      acc[curr.fieldType] = acc[curr.fieldType] || [];
-      acc[curr.fieldType].push(curr.text);
+    const mappings = formData.mappings || [];
+    const grouped = mappings.reduce((acc, curr) => {
+      const key = curr.fieldType as string;
+      acc[key] = acc[key] || [];
+      acc[key].push(curr.text);
       return acc;
     }, {} as Record<string, string[]>);
 
     Object.entries(grouped).forEach(([type, examples]) => {
-      instruction += `- The field '${type}' often appears as: "${examples.join('", "')}".\n`;
+      instruction += `- The field '${type}' often appears as: "${(examples as string[]).join('", "')}".\n`;
     });
     
     instruction += "\nUse these marked examples to understand the document layout and extract similar fields.";
@@ -120,9 +122,6 @@ const TemplateForm: React.FC<TemplateFormProps> = ({ template, onSave, onCancel 
   };
 
   // Render text with highlighting
-  // Note: This is a simplified read-only rendering of highlights. 
-  // Editing raw text with overlays is complex, so we just render the raw text and highlights separately or via simple string replacement for display.
-  // For the builder, we just show the raw text and allow selection. The "mappings" list shows what has been tagged.
   const renderHighlightedPreview = () => {
     if (!formData.sampleText) return <p className="text-gray-500 italic">No sample text loaded.</p>;
     return (
@@ -226,7 +225,7 @@ const TemplateForm: React.FC<TemplateFormProps> = ({ template, onSave, onCancel 
                  Upload Sample PDF
                  <input type="file" className="hidden" accept=".pdf" onChange={handleFileUpload} />
                </label>
-               {isLoading && <span className="text-xs text-blue-400 animate-pulse">Extracting Text...</span>}
+               {isLoading && <span className="text-xs text-blue-400 animate-pulse">Processing (Scanning OCR)...</span>}
              </div>
              <span className="text-xs text-gray-500">Select text below to tag</span>
            </div>

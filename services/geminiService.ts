@@ -2,12 +2,15 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { ParseInput, ProductSpec, CatalogueEntry, TestItem, ParsedLine } from "../types";
 // @ts-ignore
 import * as pdfjsLib from 'pdfjs-dist';
+// NOTE: Tesseract is now dynamically imported to prevent blocking initial load.
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Set worker for PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs`;
+// Set worker for PDF.js - Ensure it points to the correct version matching the library
+if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs`;
+}
 
 /**
  * Main entry point to parse a document against a catalogue.
@@ -31,7 +34,7 @@ export async function parseSpecDocument(
         bytes[i] = binaryString.charCodeAt(i);
       }
       
-      // Extract text using PDF.js
+      // Extract text using PDF.js with OCR fallback
       textContent = await extractTextFromPdf(bytes);
     } else {
       throw new Error("Unsupported input type");
@@ -116,15 +119,69 @@ export async function parseSpecDocument(
 // --- Helper Functions ---
 
 export async function extractTextFromPdf(data: Uint8Array): Promise<string> {
-  const doc = await pdfjsLib.getDocument({ data }).promise;
-  let fullText = "";
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i);
-    const content = await page.getTextContent();
-    const strings = content.items.map((item: any) => item.str);
-    fullText += strings.join(" ") + "\n";
+  try {
+    const loadingTask = pdfjsLib.getDocument({
+      data,
+      cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/cmaps/`,
+      cMapPacked: true,
+      standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/standard_fonts/`
+    });
+
+    const doc = await loadingTask.promise;
+    let fullText = "";
+    let useOCR = false;
+    
+    // Pass 1: Try Text Layer
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      const strings = content.items.map((item: any) => item.str);
+      const pageText = strings.join(" ");
+      
+      // Heuristic: If page text is very short, it's likely a scanned image
+      if (pageText.trim().length < 50) {
+        useOCR = true;
+      }
+      fullText += pageText + "\n\n";
+    }
+
+    // Pass 2: Fallback to OCR if text is missing or sparse
+    if (useOCR || fullText.trim().length === 0) {
+      console.log("Text layer missing or sparse. Falling back to OCR...");
+      fullText = ""; // Reset to build from OCR
+      
+      // Dynamic import of Tesseract.js
+      const { createWorker } = await import('tesseract.js');
+      const worker = await createWorker('eng');
+      
+      for (let i = 1; i <= doc.numPages; i++) {
+        const page = await doc.getPage(i);
+        const viewport = page.getViewport({ scale: 2.0 }); // Scale up for better OCR accuracy
+        
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({ canvasContext: context!, viewport: viewport }).promise;
+        
+        // Tesseract takes the canvas directly
+        const { data: { text } } = await worker.recognize(canvas);
+        fullText += text + "\n\n";
+      }
+      
+      await worker.terminate();
+    }
+
+    if (fullText.trim().length === 0) {
+      throw new Error("No text found. OCR also failed to extract readable text.");
+    }
+
+    return fullText;
+  } catch (err: any) {
+    console.error("PDF.js/OCR Extraction Error:", err);
+    throw new Error(`Extraction failed: ${err.message}`);
   }
-  return fullText;
 }
 
 async function callGeminiExtraction(textData: string, customInstruction?: string): Promise<{ header: any, rows: ParsedLine[] } | null> {
