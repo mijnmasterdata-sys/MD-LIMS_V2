@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class', // Enable class-based dark mode
         theme: {
           extend: {
             colors: {
@@ -21,23 +22,19 @@
       }
     </script>
     <style>
-      body {
-        background-color: #0f172a; /* slate-900 */
-        color: #f1f5f9; /* slate-100 */
-      }
       /* Custom Scrollbar for Dark Mode */
-      ::-webkit-scrollbar {
+      .dark ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
       }
-      ::-webkit-scrollbar-track {
+      .dark ::-webkit-scrollbar-track {
         background: #1e293b;
       }
-      ::-webkit-scrollbar-thumb {
+      .dark ::-webkit-scrollbar-thumb {
         background: #475569;
         border-radius: 4px;
       }
-      ::-webkit-scrollbar-thumb:hover {
+      .dark ::-webkit-scrollbar-thumb:hover {
         background: #64748b;
       }
     </style>

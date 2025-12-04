@@ -9,6 +9,7 @@ import ImportDocumentModal from './components/ImportDocumentModal';
 import ManualMatchModal from './components/ManualMatchModal';
 import ExportToolModal from './components/ExportToolModal';
 import AuditTrailModal from './components/AuditTrailModal';
+import ThemeToggle from './components/ThemeToggle';
 import { ViewState, ModalState, Product, CatalogueEntry, ProductSpec, TestItem, ParsingTemplate } from './types';
 import { DUMMY_CATALOGUE, DUMMY_PRODUCTS, DUMMY_TEMPLATES } from './constants';
 
@@ -17,6 +18,20 @@ const App: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
   const [selectedCatalogueEntry, setSelectedCatalogueEntry] = useState<CatalogueEntry | undefined>(undefined);
   const [selectedTemplate, setSelectedTemplate] = useState<ParsingTemplate | undefined>(undefined);
+  
+  // Theme State
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const savedTheme = localStorage.getItem('LIMS_THEME');
+    return (savedTheme === 'dark' || savedTheme === 'light') ? savedTheme : 'dark';
+  });
+
+  // Effect to apply theme class and save to local storage
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove(theme === 'dark' ? 'light' : 'dark');
+    root.classList.add(theme);
+    localStorage.setItem('LIMS_THEME', theme);
+  }, [theme]);
   
   // Lifted Catalogue State with Persistence
   const [catalogue, setCatalogue] = useState<CatalogueEntry[]>(() => {
@@ -152,7 +167,8 @@ const App: React.FC = () => {
       productName: spec.productName,
       version: spec.version,
       materialType: spec.materialType,
-      effectiveDate: spec.effectiveDate
+      effectiveDate: spec.effectiveDate,
+      packDescription: spec.packDescription,
     };
     setSelectedProduct(newProduct);
     setImportedSpec(spec);
@@ -160,33 +176,34 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 flex flex-col font-sans transition-colors duration-300">
       
       {/* Top Navigation */}
-      <nav className="border-b border-gray-800 bg-gray-950 px-6 py-3 flex justify-between items-center sticky top-0 z-40">
+      <nav className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-6 py-3 flex justify-between items-center sticky top-0 z-40">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">L</div>
-            <span className="text-xl font-bold tracking-tight text-white">LIMS Spec Builder</span>
+            <span className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">LIMS Spec Builder</span>
           </div>
           
           <div className="flex space-x-1">
-            <button onClick={goProductList} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view.startsWith('PRODUCT') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}`}>Products</button>
-            <button onClick={goCatalogueList} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view.startsWith('CATALOGUE') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}`}>Catalogue</button>
-            <button onClick={goTemplateList} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view.startsWith('TEMPLATE') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800/50'}`}>Templates</button>
+            <button onClick={goProductList} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view.startsWith('PRODUCT') ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800/50'}`}>Products</button>
+            <button onClick={goCatalogueList} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view.startsWith('CATALOGUE') ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800/50'}`}>Catalogue</button>
+            <button onClick={goTemplateList} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${view.startsWith('TEMPLATE') ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800/50'}`}>Templates</button>
           </div>
         </div>
 
         <div className="flex items-center space-x-4">
-           <button onClick={() => toggleModal('exportTool', true)} className="text-gray-400 hover:text-green-400 transition-colors" title="Export Data">
+           <ThemeToggle theme={theme} setTheme={setTheme} />
+           <button onClick={() => toggleModal('exportTool', true)} className="text-gray-500 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-400 transition-colors" title="Export Data">
              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
            </button>
-           <button onClick={() => toggleModal('auditTrail', true)} className="text-gray-400 hover:text-yellow-400 transition-colors" title="Audit Logs">
+           <button onClick={() => toggleModal('auditTrail', true)} className="text-gray-500 dark:text-gray-400 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors" title="Audit Logs">
              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
            </button>
-           <div className="w-px h-6 bg-gray-700 mx-2"></div>
+           <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-2"></div>
            <div className="flex items-center gap-2">
-             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-xs font-semibold">JD</div>
+             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-xs font-semibold text-white">JD</div>
            </div>
         </div>
       </nav>

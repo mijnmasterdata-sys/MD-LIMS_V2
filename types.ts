@@ -1,4 +1,5 @@
 
+
 export interface Product {
   id: string;
   productCode: string;
@@ -6,6 +7,7 @@ export interface Product {
   version: string;
   materialType: string;
   effectiveDate?: string;
+  packDescription?: string;
 }
 
 export interface TestItem {
@@ -27,6 +29,7 @@ export interface TestItem {
   reportedNameAnalysis: string;
   reportedNameComponent: string;
   cLitReference: string;
+  stage?: string;
 }
 
 export interface CatalogueEntry {
@@ -88,6 +91,7 @@ export interface ProductSpec {
   materialType: string;
   version: string;
   effectiveDate: string;
+  packDescription?: string;
   tests: TestItem[];
 }
 
@@ -96,4 +100,6 @@ export interface ParsedLine {
   rawDescription: string;
   rawLimit: string;
   rawTextSpec: string;
+  rawReference?: string;
+  rawStage?: string;
 }

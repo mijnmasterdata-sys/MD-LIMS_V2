@@ -85,8 +85,8 @@ const CatalogueView: React.FC<CatalogueViewProps> = ({ entries, onUpdateEntries,
     <div className="space-y-6 animate-in fade-in duration-300">
        <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-white">Master Catalogue</h2>
-          <p className="text-gray-400 text-sm">Centralized definitions for analysis and components.</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Master Catalogue</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">Centralized definitions for analysis and components.</p>
         </div>
         <div className="flex gap-3">
           <input 
@@ -107,42 +107,42 @@ const CatalogueView: React.FC<CatalogueViewProps> = ({ entries, onUpdateEntries,
         </div>
       </div>
 
-      <div className="overflow-hidden border border-gray-700 rounded-lg shadow-lg bg-gray-800">
+      <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg bg-white dark:bg-gray-800">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-700">
-            <thead className="bg-gray-900/50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900/50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Test Code</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Analysis</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Component</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Unit</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Default Grade</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Rounding</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Test Code</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Analysis</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Component</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Unit</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Category</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Default Grade</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Rounding</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-700 bg-gray-800">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
               {entries.map((entry) => (
-                <tr key={entry.id} className="hover:bg-gray-750 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-blue-300">{entry.testCode}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-200">{entry.analysis}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{entry.component}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{entry.units}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{entry.category}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{entry.type}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{entry.defaultGrade}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{entry.rounding}</td>
+                <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-blue-700 dark:text-blue-300">{entry.testCode}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 dark:text-gray-200">{entry.analysis}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{entry.component}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{entry.units}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{entry.category}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{entry.type}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{entry.defaultGrade}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{entry.rounding}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <button onClick={() => onEdit(entry)} className="text-blue-400 hover:text-blue-300">Edit</button>
-                    <button onClick={() => onDelete(entry.id)} className="text-red-400 hover:text-red-300">Delete</button>
+                    <button onClick={() => onEdit(entry)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">Edit</button>
+                    <button onClick={() => onDelete(entry.id)} className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Delete</button>
                   </td>
                 </tr>
               ))}
               {entries.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-12 text-center text-gray-400 dark:text-gray-500">
                     Catalogue is empty. Import a CSV or add entries manually.
                   </td>
                 </tr>
