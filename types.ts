@@ -13,7 +13,7 @@ export interface TestItem {
   order: number;
   matchStatus: 'MATCHED' | 'UNMATCHED' | 'MANUAL' | 'LOW_CONFIDENCE';
   confidenceScore: number;
-  suggestions?: string[];
+  suggestions?: Pick<CatalogueEntry, 'id' | 'analysis' | 'testCode'>[];
   analysis: string;
   component: string;
   testCode: string;

@@ -207,6 +207,7 @@ const App: React.FC = () => {
             key={selectedProduct ? selectedProduct.id : 'new'}
             product={selectedProduct} 
             initialTests={importedSpec?.tests}
+            catalogue={catalogue}
             onSave={handleSaveProduct} 
             onCancel={goProductList}
             onImportClick={() => toggleModal('importDoc', true)}

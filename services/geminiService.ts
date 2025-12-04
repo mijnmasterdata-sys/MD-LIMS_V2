@@ -7,9 +7,12 @@ import * as pdfjsLib from 'pdfjs-dist';
 // Initialize Gemini Client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+// Get the version of the loaded pdfjs-dist library to prevent version mismatch errors.
+const PDF_JS_VERSION = pdfjsLib.version;
+
 // Set worker for PDF.js - Ensure it points to the correct version matching the library
 if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDF_JS_VERSION}/build/pdf.worker.min.mjs`;
 }
 
 /**
@@ -66,10 +69,10 @@ export async function parseSpecDocument(
 
       const match = matchCatalogue(line, catalogue);
       
-      const testCode = match?.entry.testCode || line.rawTestCode || `UNKNOWN-${index}`;
+      const uniqueTestCode = match?.entry.testCode || line.rawTestCode || `UNMATCHED-${index}`;
       
-      if (seenCodes.has(testCode)) continue;
-      seenCodes.add(testCode);
+      if (seenCodes.has(uniqueTestCode)) continue;
+      seenCodes.add(uniqueTestCode);
 
       // Determine Rules
       const { rule, min, max, textSpec } = interpretRule(line.rawLimit || line.rawTextSpec);
@@ -81,10 +84,10 @@ export async function parseSpecDocument(
         confidenceScore: match ? match.confidence : 0,
         suggestions: match ? [] : findSuggestions(line, catalogue),
         
-        analysis: match?.entry.analysis || line.rawDescription || "Unknown Analysis",
-        component: match?.entry.component || "Unknown Component",
-        testCode: testCode,
-        description: match?.entry.analysis || line.rawDescription || "",
+        analysis: match?.entry.analysis || "--- UNMATCHED ---",
+        component: match?.entry.component || "---",
+        testCode: uniqueTestCode,
+        description: line.rawDescription || "", // Always keep raw description for context
         
         rule: rule,
         min: min,
@@ -92,9 +95,9 @@ export async function parseSpecDocument(
         textSpec: textSpec,
         
         units: match?.entry.units || "-",
-        category: match?.entry.category || "General",
-        reportedNameAnalysis: match?.entry.analysis || "",
-        reportedNameComponent: match?.entry.component || "",
+        category: match?.entry.category || "Uncategorized",
+        reportedNameAnalysis: line.rawDescription || "",
+        reportedNameComponent: "",
         cLitReference: "",
       };
 
@@ -122,41 +125,63 @@ export async function extractTextFromPdf(data: Uint8Array): Promise<string> {
   try {
     const loadingTask = pdfjsLib.getDocument({
       data,
-      cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/cmaps/`,
+      cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDF_JS_VERSION}/cmaps/`,
       cMapPacked: true,
-      standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/standard_fonts/`
+      standardFontDataUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDF_JS_VERSION}/standard_fonts/`
     });
 
     const doc = await loadingTask.promise;
     let fullText = "";
     let useOCR = false;
     
-    // Pass 1: Try Text Layer
+    // Pass 1: Try Text Layer, preserving structure
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const content = await page.getTextContent();
-      const strings = content.items.map((item: any) => item.str);
-      const pageText = strings.join(" ");
       
-      // Heuristic: If page text is very short, it's likely a scanned image
+      if (!content.items || content.items.length === 0) {
+        fullText += '\n\n'; // Add page break even for empty pages
+        continue;
+      }
+
+      // Group text items by line based on their y-coordinate.
+      const lines = new Map<number, any[]>();
+      for (const item of content.items) {
+        const y = Math.round(item.transform[5]);
+        if (!lines.has(y)) {
+          lines.set(y, []);
+        }
+        lines.get(y)!.push(item);
+      }
+      
+      const sortedYCoords = Array.from(lines.keys()).sort((a, b) => b - a);
+      
+      const pageLines: string[] = [];
+      for (const y of sortedYCoords) {
+        const lineItems = lines.get(y)!;
+        lineItems.sort((a, b) => a.transform[4] - b.transform[4]);
+        pageLines.push(lineItems.map(item => item.str).join('   '));
+      }
+      const pageText = pageLines.join('\n');
+      
       if (pageText.trim().length < 50) {
         useOCR = true;
       }
       fullText += pageText + "\n\n";
     }
 
+
     // Pass 2: Fallback to OCR if text is missing or sparse
     if (useOCR || fullText.trim().length === 0) {
       console.log("Text layer missing or sparse. Falling back to OCR...");
       fullText = ""; // Reset to build from OCR
       
-      // Dynamic import of Tesseract.js
-      const { createWorker } = await import('tesseract.js');
+      const { createWorker } = await import('https://cdn.jsdelivr.net/npm/tesseract.js@5.0.5/dist/tesseract.esm.min.js');
       const worker = await createWorker('eng');
       
       for (let i = 1; i <= doc.numPages; i++) {
         const page = await doc.getPage(i);
-        const viewport = page.getViewport({ scale: 2.0 }); // Scale up for better OCR accuracy
+        const viewport = page.getViewport({ scale: 2.0 });
         
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
@@ -165,7 +190,6 @@ export async function extractTextFromPdf(data: Uint8Array): Promise<string> {
 
         await page.render({ canvasContext: context!, viewport: viewport }).promise;
         
-        // Tesseract takes the canvas directly
         const { data: { text } } = await worker.recognize(canvas);
         fullText += text + "\n\n";
       }
@@ -277,11 +301,9 @@ function matchCatalogue(line: ParsedLine, catalogue: CatalogueEntry[]): { entry:
   }
 
   // 3. Description Contains Match (simplified Levenshtein substitute)
-  // Check if words in description match
   for (const entry of catalogue) {
     const entryDesc = entry.analysis.toLowerCase();
     if (rawDesc.includes(entryDesc) || entryDesc.includes(rawDesc)) {
-       // Simple heuristic scoring
        return { entry, confidence: 80 };
     }
   }
@@ -289,12 +311,11 @@ function matchCatalogue(line: ParsedLine, catalogue: CatalogueEntry[]): { entry:
   return null;
 }
 
-function findSuggestions(line: ParsedLine, catalogue: CatalogueEntry[]): string[] {
-  // Simple suggestion based on partial text match
+function findSuggestions(line: ParsedLine, catalogue: CatalogueEntry[]): Pick<CatalogueEntry, 'id' | 'analysis' | 'testCode'>[] {
   const rawDesc = (line.rawDescription || "").toLowerCase();
   return catalogue
     .filter(c => c.analysis.toLowerCase().includes(rawDesc) || rawDesc.includes(c.analysis.toLowerCase()))
-    .map(c => c.analysis)
+    .map(c => ({ id: c.id, analysis: c.analysis, testCode: c.testCode }))
     .slice(0, 3);
 }
 
@@ -310,7 +331,6 @@ function interpretRule(rawLimit: string): { rule: string, min: string, max: stri
   const lower = clean.toLowerCase();
 
   // Numeric Rules
-  // NMT / Not more than / <=
   if (lower.match(/nmt|not more than|<=|<|^max/)) {
     const num = clean.match(/-?\d+(\.\d+)?/);
     if (num) {
@@ -318,7 +338,6 @@ function interpretRule(rawLimit: string): { rule: string, min: string, max: stri
       max = num[0];
     }
   }
-  // NLT / Not less than / >=
   else if (lower.match(/nlt|not less than|>=|>|^min/)) {
     const num = clean.match(/-?\d+(\.\d+)?/);
     if (num) {
@@ -326,7 +345,6 @@ function interpretRule(rawLimit: string): { rule: string, min: string, max: stri
       min = num[0];
     }
   }
-  // Range (X - Y, X to Y)
   else if (clean.match(/\d+(\.\d+)?\s*[-–to]\s*\d+(\.\d+)?/)) {
     const nums = clean.match(/-?\d+(\.\d+)?/g);
     if (nums && nums.length >= 2) {
@@ -335,8 +353,6 @@ function interpretRule(rawLimit: string): { rule: string, min: string, max: stri
       max = nums[1];
     }
   }
-  // Text Rules
-  // Complies, Pass, Positive, Appearance description
   else {
     rule = "Text";
     textSpec = clean;

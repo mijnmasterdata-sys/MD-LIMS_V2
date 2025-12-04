@@ -1,4 +1,3 @@
-
 import { Product, TestItem, CatalogueEntry, AuditLog, ParsingTemplate } from './types';
 
 export const DUMMY_PRODUCTS: Product[] = [
@@ -18,7 +17,14 @@ export const DUMMY_TESTS: TestItem[] = [
   },
   {
     id: 't2', order: 2, 
-    matchStatus: 'LOW_CONFIDENCE', confidenceScore: 65, suggestions: ['pH', 'Acidity', 'Alkalinity'],
+    matchStatus: 'LOW_CONFIDENCE', confidenceScore: 65, 
+    // FIX: The 'suggestions' property expects an array of objects, not strings.
+    // Replaced string array with objects that match the required type from DUMMY_CATALOGUE.
+    suggestions: [
+      { id: 'c2', analysis: 'pH', testCode: 'PH01' },
+      { id: 'c3', analysis: 'Assay', testCode: 'AS01' },
+      { id: 'c4', analysis: 'Density', testCode: 'DN01' }
+    ],
     analysis: 'pH', component: 'pH Value', testCode: 'PH01',
     description: 'Potentiometric determination', rule: 'Range', min: '7.2', max: '7.6',
     textSpec: '', units: 'pH', category: 'Chemical',

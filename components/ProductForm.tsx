@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Button from './Button';
-import { Product, TestItem } from '../types';
-import { DUMMY_TESTS, MATERIAL_TYPES, RULES, DUMMY_CATALOGUE } from '../constants';
+import { Product, TestItem, CatalogueEntry } from '../types';
+import { DUMMY_TESTS, MATERIAL_TYPES, RULES } from '../constants';
 
 interface ProductFormProps {
   product?: Product; // If null, creating new
   initialTests?: TestItem[]; // For imported data
+  catalogue: CatalogueEntry[];
   onSave: (product: Product) => void;
   onCancel: () => void;
   onImportClick: () => void;
 }
 
-const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, onSave, onCancel, onImportClick }) => {
+const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, catalogue, onSave, onCancel, onImportClick }) => {
   const [headerData, setHeaderData] = useState<Product>({
     id: product?.id || '',
     productCode: product?.productCode || '',
@@ -22,6 +23,25 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, onSave
   });
 
   const [tests, setTests] = useState<TestItem[]>([]);
+  const [selectedCatalogueId, setSelectedCatalogueId] = useState<string>('');
+
+  // Memoized calculation for duplicate components
+  const duplicateComponents = useMemo(() => {
+    const counts = new Map<string, number>();
+    tests.forEach(test => {
+      // Only count non-empty/non-placeholder components
+      if (test.component && test.component.trim() && test.component !== '---') {
+        counts.set(test.component, (counts.get(test.component) || 0) + 1);
+      }
+    });
+    const duplicates = new Set<string>();
+    for (const [component, count] of counts.entries()) {
+      if (count > 1) {
+        duplicates.add(component);
+      }
+    }
+    return duplicates;
+  }, [tests]);
 
   // Initialize Tests State
   useEffect(() => {
@@ -29,7 +49,6 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, onSave
       setTests(initialTests);
     } else if (product && !initialTests) {
       // If editing existing product (simulated), load dummy tests if empty, or keep empty
-      // In a real app we'd fetch tests for this product ID
       if (product.id && !product.id.startsWith('draft') && !product.id.startsWith('new')) {
          setTests(DUMMY_TESTS); 
       } else {
@@ -45,31 +64,75 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, onSave
     setHeaderData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Dummy Handler
-  const handleAddTest = () => {
-    setTests([
-      ...tests, 
-      {
-        ...DUMMY_TESTS[0], 
-        id: `new-${Date.now()}`, 
-        order: (tests.length + 1) * 10,
-        matchStatus: 'MANUAL',
-        confidenceScore: 100,
-        testCode: 'NEW01',
-        description: 'New Test Entry',
-        analysis: '',
-        component: ''
-      }
-    ]);
+  const handleTestChange = (id: string, field: keyof TestItem, value: string) => {
+    setTests(prevTests => 
+        prevTests.map(test => 
+            test.id === id ? { ...test, [field]: value } : test
+        )
+    );
   };
+
+  const handleAddTest = () => {
+    if (!selectedCatalogueId) return;
+    
+    const selectedEntry = catalogue.find(c => c.id === selectedCatalogueId);
+    if (!selectedEntry) return;
+
+    const newTest: TestItem = {
+      id: `new-${Date.now()}`,
+      order: (tests.length + 1) * 10,
+      matchStatus: 'MANUAL',
+      confidenceScore: 100,
+      suggestions: [],
+      analysis: selectedEntry.analysis,
+      component: selectedEntry.component,
+      testCode: selectedEntry.testCode,
+      description: selectedEntry.analysis,
+      rule: 'N/A',
+      min: '',
+      max: '',
+      textSpec: '',
+      units: selectedEntry.units,
+      category: selectedEntry.category,
+      reportedNameAnalysis: selectedEntry.analysis,
+      reportedNameComponent: selectedEntry.component,
+      cLitReference: '',
+    };
+    
+    setTests([...tests, newTest]);
+    setSelectedCatalogueId(''); // Reset dropdown after adding
+  };
+
 
   const handleRemoveTest = (id: string) => {
     setTests(tests.filter(t => t.id !== id));
   };
 
+  const handleSuggestionSelect = (testId: string, catalogueEntryId: string) => {
+    const selectedEntry = catalogue.find(c => c.id === catalogueEntryId);
+    if (!selectedEntry) return;
+
+    setTests(prevTests => 
+        prevTests.map(test => {
+            if (test.id === testId) {
+                return {
+                    ...test,
+                    matchStatus: 'MANUAL',
+                    confidenceScore: 100,
+                    analysis: selectedEntry.analysis,
+                    component: selectedEntry.component,
+                    testCode: selectedEntry.testCode,
+                    units: selectedEntry.units,
+                    category: selectedEntry.category,
+                    suggestions: [], // Clear suggestions after matching
+                };
+            }
+            return test;
+        })
+    );
+  };
+
   const handleFormSave = () => {
-    // In a real app, we would also save 'tests'. 
-    // Here we pass the header data back to update the list view.
     onSave(headerData);
   };
 
@@ -165,9 +228,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, onSave
           <h3 className="text-lg font-semibold text-white">Specification Tests</h3>
           
           <div className="flex items-center space-x-2">
-            <select className="bg-gray-900 border border-gray-600 text-xs rounded px-2 py-1.5 text-white focus:outline-none max-w-[200px]">
-              <option>Select Catalogue Item...</option>
-              {DUMMY_CATALOGUE.map(c => (
+            <select 
+              className="bg-gray-900 border border-gray-600 text-xs rounded px-2 py-1.5 text-white focus:outline-none max-w-[200px]"
+              value={selectedCatalogueId}
+              onChange={(e) => setSelectedCatalogueId(e.target.value)}
+            >
+              <option value="">Select Catalogue Item...</option>
+              {catalogue.map(c => (
                 <option key={c.id} value={c.id}>{c.testCode} - {c.analysis}</option>
               ))}
             </select>
@@ -202,76 +269,50 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, initialTests, onSave
               {tests.map((test, idx) => (
                 <tr key={test.id} className="group hover:bg-gray-750">
                    <td className="px-3 py-2 text-center text-xs text-gray-500 font-mono">{idx + 1}</td>
-                   
-                   {/* Match Status */}
                    <td className="px-3 py-2 text-center text-xs">
                      <div className="flex justify-center">{getStatusBadge(test.matchStatus)}</div>
                    </td>
-                   
-                   {/* Confidence Score */}
                    <td className="px-3 py-2 text-center">
                      <div className="w-full bg-gray-700 rounded-full h-1.5 mb-1">
                         <div className={`${getConfidenceColor(test.confidenceScore)} h-1.5 rounded-full`} style={{ width: `${test.confidenceScore}%` }}></div>
                      </div>
                      <span className="text-[10px] text-gray-400">{test.confidenceScore}%</span>
                    </td>
-
-                   {/* Analysis (Suggested Matches Dropdown) */}
                    <td className="px-3 py-2">
                      <div className="flex flex-col gap-1">
-                       <input type="text" defaultValue={test.analysis} className="w-full bg-transparent border-none text-xs text-white focus:ring-0 p-0" />
-                       {test.matchStatus !== 'MATCHED' && test.suggestions && test.suggestions.length > 0 && (
-                         <select className="w-full bg-blue-900/30 text-[10px] text-blue-200 border border-blue-800 rounded px-1 py-0.5 focus:outline-none">
-                           <option value="">Suggested Matches...</option>
-                           {test.suggestions.map(s => <option key={s} value={s}>{s}</option>)}
+                       <input type="text" value={test.analysis} onChange={(e) => handleTestChange(test.id, 'analysis', e.target.value)} className="w-full bg-transparent border-none text-xs text-white focus:ring-0 p-0" />
+                       {test.matchStatus === 'UNMATCHED' && test.suggestions && test.suggestions.length > 0 && (
+                         <select 
+                          className="w-full bg-blue-900/30 text-[10px] text-blue-200 border border-blue-800 rounded px-1 py-0.5 focus:outline-none"
+                          onChange={(e) => handleSuggestionSelect(test.id, e.target.value)}
+                          value=""
+                        >
+                           <option value="">Match Suggestion...</option>
+                           {test.suggestions.map(s => <option key={s.id} value={s.id}>{s.testCode} - {s.analysis}</option>)}
                          </select>
                        )}
                      </div>
                    </td>
-                   
-                   {/* Component */}
-                   <td className="px-3 py-2"><input type="text" defaultValue={test.component} className="w-full bg-transparent border-none text-xs text-white focus:ring-0 p-0" /></td>
-                   {/* Test Code */}
-                   <td className="px-3 py-2"><input type="text" defaultValue={test.testCode} className="w-full bg-transparent border-b border-transparent group-hover:border-gray-600 focus:border-blue-500 text-xs text-blue-300 focus:ring-0 px-1 py-0.5" /></td>
-                   {/* Description */}
-                   <td className="px-3 py-2"><input type="text" defaultValue={test.description} className="w-full bg-transparent border-b border-transparent group-hover:border-gray-600 focus:border-blue-500 text-xs text-gray-300 focus:ring-0 px-1 py-0.5" /></td>
-                   
-                   {/* Rule */}
                    <td className="px-3 py-2">
-                     <select defaultValue={test.rule} className="w-full bg-transparent text-xs text-gray-300 border-none focus:ring-0 p-0 cursor-pointer">
+                     <input type="text" value={test.component} onChange={(e) => handleTestChange(test.id, 'component', e.target.value)} className={`w-full bg-transparent border-b border-transparent group-hover:border-gray-600 focus:border-blue-500 text-xs focus:ring-0 px-1 py-0.5 ${duplicateComponents.has(test.component) ? 'text-red-400 font-bold border-red-500/50 group-hover:border-red-500' : 'text-white'}`} />
+                   </td>
+                   <td className="px-3 py-2"><input type="text" value={test.testCode} onChange={(e) => handleTestChange(test.id, 'testCode', e.target.value)} className="w-full bg-transparent border-b border-transparent group-hover:border-gray-600 focus:border-blue-500 text-xs text-blue-300 focus:ring-0 px-1 py-0.5" /></td>
+                   <td className="px-3 py-2"><input type="text" value={test.description} onChange={(e) => handleTestChange(test.id, 'description', e.target.value)} className="w-full bg-transparent border-b border-transparent group-hover:border-gray-600 focus:border-blue-500 text-xs text-gray-300 focus:ring-0 px-1 py-0.5" /></td>
+                   <td className="px-3 py-2">
+                     <select value={test.rule} onChange={(e) => handleTestChange(test.id, 'rule', e.target.value)} className="w-full bg-transparent text-xs text-gray-300 border-none focus:ring-0 p-0 cursor-pointer">
                        {RULES.map(r => <option key={r} value={r} className="bg-gray-800">{r}</option>)}
                      </select>
                    </td>
-
-                   {/* Min */}
-                   <td className="px-3 py-2"><input type="text" defaultValue={test.min} className="w-full bg-gray-900/50 border border-gray-700 rounded text-xs text-white px-1 py-1 focus:border-blue-500 focus:outline-none" /></td>
-                   {/* Max */}
-                   <td className="px-3 py-2"><input type="text" defaultValue={test.max} className="w-full bg-gray-900/50 border border-gray-700 rounded text-xs text-white px-1 py-1 focus:border-blue-500 focus:outline-none" /></td>
-                   
-                   {/* Text Spec */}
-                   <td className="px-3 py-2"><input type="text" defaultValue={test.textSpec} className="w-full bg-gray-900/50 border border-gray-700 rounded text-xs text-white px-1 py-1 focus:border-blue-500 focus:outline-none" /></td>
-                   
-                   {/* Units */}
-                   <td className="px-3 py-2"><input type="text" defaultValue={test.units} className="w-full bg-transparent text-xs text-gray-300 text-center border-none focus:ring-0 p-0" /></td>
-                   
-                   {/* Category */}
-                   <td className="px-3 py-2"><input type="text" defaultValue={test.category} className="w-full bg-transparent text-xs text-gray-400 border-none focus:ring-0 p-0" /></td>
-
-                   {/* Reported Names */}
-                   <td className="px-3 py-2"><input type="text" defaultValue={test.reportedNameAnalysis} className="w-full bg-transparent border-b border-transparent group-hover:border-gray-600 text-xs text-gray-400 focus:ring-0 px-1 py-0.5" /></td>
-                   <td className="px-3 py-2"><input type="text" defaultValue={test.reportedNameComponent} className="w-full bg-transparent border-b border-transparent group-hover:border-gray-600 text-xs text-gray-400 focus:ring-0 px-1 py-0.5" /></td>
-                   
-                   {/* C-Lit */}
-                   <td className="px-3 py-2"><input type="text" defaultValue={test.cLitReference} className="w-full bg-transparent border-b border-transparent group-hover:border-gray-600 text-xs text-gray-400 focus:ring-0 px-1 py-0.5" /></td>
-                   
-                   {/* Actions: Manual Match & Delete */}
+                   <td className="px-3 py-2"><input type="text" value={test.min} onChange={(e) => handleTestChange(test.id, 'min', e.target.value)} className="w-full bg-gray-900/50 border border-gray-700 rounded text-xs text-white px-1 py-1 focus:border-blue-500 focus:outline-none" /></td>
+                   <td className="px-3 py-2"><input type="text" value={test.max} onChange={(e) => handleTestChange(test.id, 'max', e.target.value)} className="w-full bg-gray-900/50 border border-gray-700 rounded text-xs text-white px-1 py-1 focus:border-blue-500 focus:outline-none" /></td>
+                   <td className="px-3 py-2"><input type="text" value={test.textSpec} onChange={(e) => handleTestChange(test.id, 'textSpec', e.target.value)} className="w-full bg-gray-900/50 border border-gray-700 rounded text-xs text-white px-1 py-1 focus:border-blue-500 focus:outline-none" /></td>
+                   <td className="px-3 py-2"><input type="text" value={test.units} onChange={(e) => handleTestChange(test.id, 'units', e.target.value)} className="w-full bg-transparent text-xs text-gray-300 text-center border-none focus:ring-0 p-0" /></td>
+                   <td className="px-3 py-2"><input type="text" value={test.category} onChange={(e) => handleTestChange(test.id, 'category', e.target.value)} className="w-full bg-transparent text-xs text-gray-400 border-none focus:ring-0 p-0" /></td>
+                   <td className="px-3 py-2"><input type="text" value={test.reportedNameAnalysis} onChange={(e) => handleTestChange(test.id, 'reportedNameAnalysis', e.target.value)} className="w-full bg-transparent border-b border-transparent group-hover:border-gray-600 text-xs text-gray-400 focus:ring-0 px-1 py-0.5" /></td>
+                   <td className="px-3 py-2"><input type="text" value={test.reportedNameComponent} onChange={(e) => handleTestChange(test.id, 'reportedNameComponent', e.target.value)} className="w-full bg-transparent border-b border-transparent group-hover:border-gray-600 text-xs text-gray-400 focus:ring-0 px-1 py-0.5" /></td>
+                   <td className="px-3 py-2"><input type="text" value={test.cLitReference} onChange={(e) => handleTestChange(test.id, 'cLitReference', e.target.value)} className="w-full bg-transparent border-b border-transparent group-hover:border-gray-600 text-xs text-gray-400 focus:ring-0 px-1 py-0.5" /></td>
                    <td className="px-3 py-2 text-center">
                      <div className="flex items-center justify-center space-x-2">
-                       {test.matchStatus !== 'MATCHED' && (
-                         <button className="text-blue-400 hover:text-blue-300 transition-colors p-1" title="Manual Match">
-                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-                         </button>
-                       )}
                        <button onClick={() => handleRemoveTest(test.id)} className="text-gray-500 hover:text-red-400 transition-colors p-1" title="Delete">
                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                        </button>
